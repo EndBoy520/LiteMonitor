@@ -1,0 +1,49 @@
+{
+  "version": 3,
+  "name": "LightPure_Elegant",
+  "layout": {
+    "rowHeight": 40,
+    "padding": 12,
+    "cornerRadius": 12,
+    "groupRadius": 10,
+    "groupPadding": 8,
+    "groupSpacing": 20,
+    "groupBottom": 6,
+    "groupTitleOffset": 4,
+    "itemGap": 6
+  },
+  "font": {
+    "family": "Microsoft YaHei UI",
+    "valueFamily": "Consolas",
+    "title": 11.5,
+    "group": 10.5,
+    "item": 10.0,
+    "value": 12.0,
+    "bold": true,
+    "scale": 1.0
+  },
+  "color": {
+    "background": "#F8F9FA",
+    "border": "#DDDDDD",
+    "shadow": "rgba(0,0,0,0.1)",
+    "textTitle": "#222222",
+    "textGroup": "#444444",
+    "textPrimary": "#222222",
+    "textSecondary": "#777777",
+    "valueSafe": "#00B050",
+    "valueWarn": "#FFB100",
+    "valueCrit": "#E74C3C",
+    "barBackground": "#EAEAEA",
+    "barLow": "#00B050",
+    "barMid": "#FFB100",
+    "barHigh": "#E74C3C",
+    "groupBackground": "#FFFFFF"
+  },
+  "thresholds": {
+    "load": { "warn": 65, "crit": 85 },
+    "temp": { "warn": 60, "crit": 80 },
+    "vram": { "warn": 75, "crit": 90 },
+    "mem": { "warn": 65, "crit": 85 },
+    "netKBps": { "warn": 2048, "crit": 8192 }
+  }
+}

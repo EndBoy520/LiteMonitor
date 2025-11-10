@@ -1,0 +1,35 @@
+{
+  "Title": "⚡️LiteMonitor",
+  "Groups": {
+    "CPU": "💻CPU",
+    "GPU": "🎮GPU",
+    "MEM": "💾Memory",
+    "DISK": "📀Disk",
+    "NET": "🌐Network"
+  },
+  "Items": {
+    "CPU.Load": "CPU Load",
+    "CPU.Temp": "CPU Temp",
+    "GPU.Load": "GPU Load",
+    "GPU.Temp": "GPU Temp",
+    "GPU.VRAM": "VRAM Usage",
+    "MEM.Load": "Memory Usage",
+    "DISK.Read": "Read",
+    "DISK.Write": "Write",
+    "NET.Up": "Upload",
+    "NET.Down": "Download"
+  },
+  "Menu": {
+    "TopMost": "Always on Top",
+    "Opacity": "Opacity",
+    "ShowItems": "Show Items",
+    "Theme": "Theme",
+    "More": "More",
+    "ClickThrough": "Click Through",
+    "AutoHide": "Auto Hide on Edge",
+    "Width": "Panel Width",
+    "Language": "Language",
+    "AutoStart": "Launch on Startup",
+    "Exit": "Exit"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "Title": "⚡️LiteMonitor",
+  "Groups": {
+    "CPU": "💻CPU",
+    "GPU": "🎮GPU",
+    "MEM": "💾内存",
+    "DISK": "📀磁盘",
+    "NET": "🌐网络"
+  },
+  "Items": {
+    "CPU.Load": "CPU使用率",
+    "CPU.Temp": "CPU温度",
+    "GPU.Load": "GPU使用率",
+    "GPU.Temp": "GPU温度",
+    "GPU.VRAM": "显存占用",
+    "MEM.Load": "内存占用",
+    "DISK.Read": "读取",
+    "DISK.Write": "写入",
+    "NET.Up": "上传",
+    "NET.Down": "下载"
+  },
+  "Menu": {
+    "TopMost": "总是置顶",
+    "Opacity": "透明度",
+    "ShowItems": "显示项",
+    "Theme": "主题",
+    "More": "更多",
+    "ClickThrough": "鼠标穿透",
+    "AutoHide": "靠边自动隐藏",
+    "Width": "界面宽度",
+    "Language": "语言/Language",
+    "AutoStart": "开机自启动",
+    "Exit": "退出"
+  }
+}
