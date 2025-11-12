@@ -218,6 +218,9 @@ namespace LiteMonitor
                 int y = area.Top + (area.Height - Height) / 2; // 垂直居中
                 Location = new Point(x, y);
             }
+
+            // ✅ 启动时静默检查更新（不打扰用户）
+            _ = LiteMonitor.UpdateChecker.CheckAsync();
         }
 
 
@@ -428,7 +431,7 @@ namespace LiteMonitor
 
             // === 检查更新 ===
             var checkUpdate = new ToolStripMenuItem(LanguageManager.T("Menu.CheckUpdate"));
-            checkUpdate.Click += async (_, __) => await UpdateChecker.CheckForUpdatesAsync();
+            checkUpdate.Click += async (_, __) => await UpdateChecker.CheckAsync(showMessage: true);
             menu.Items.Add(checkUpdate);
 
             // === 关于 ===

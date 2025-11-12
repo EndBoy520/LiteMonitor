@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net.Http;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -9,20 +9,26 @@ namespace LiteMonitor
 {
     public static class UpdateChecker
     {
-        // 版本号文件建议放在 GitHub 仓库根目录
         private const string VersionUrl = "https://raw.githubusercontent.com/Diorser/LiteMonitor/master/resources/version.json";
-        private const string ReleasePage = "https://github.com/Diorser/LiteMonitor/releases";
+        private const string ReleasePage = "https://github.com/Diorser/LiteMonitor/releases/latest";
 
-        public static async Task CheckForUpdatesAsync(bool showWhenUpToDate = true)
+        public static async Task CheckAsync(bool showMessage = false)
         {
             try
             {
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                string json = await http.GetStringAsync(VersionUrl);
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(6) };
+                var json = await http.GetStringAsync(VersionUrl);
+
                 using var doc = JsonDocument.Parse(json);
                 string? latest = doc.RootElement.GetProperty("version").GetString();
 
-                string current = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0";
+                // 当前版本（读取 <Version>）
+                string current = Application.ProductVersion ?? "0.0.0";
+
+                // 去掉 +哈希 后缀
+                latest = Normalize(latest);
+                current = Normalize(current);
+
                 if (IsNewer(latest, current))
                 {
                     if (MessageBox.Show(
@@ -31,34 +37,35 @@ namespace LiteMonitor
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Information) == DialogResult.Yes)
                     {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ReleasePage)
-                        {
-                            UseShellExecute = true
-                        });
+                        Process.Start(new ProcessStartInfo(ReleasePage) { UseShellExecute = true });
                     }
                 }
-                else if (showWhenUpToDate)
+                else if (showMessage)
                 {
-                    MessageBox.Show($"当前已是最新版本 ({current})。", "LiteMonitor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"当前已是最新版：{current}", "LiteMonitor", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
-                if (showWhenUpToDate)
-                    MessageBox.Show($"检查更新失败：{ex.Message}", "LiteMonitor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (showMessage)
+                    MessageBox.Show("检查更新失败。\n" + ex.Message, "LiteMonitor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                else
+                    Debug.WriteLine("[UpdateChecker] " + ex.Message);
             }
         }
 
-        private static bool IsNewer(string? latest, string current)
+        private static string Normalize(string? version)
         {
-            if (string.IsNullOrWhiteSpace(latest)) return false;
-            try
-            {
-                Version v1 = new Version(latest);
-                Version v2 = new Version(current);
+            if (string.IsNullOrWhiteSpace(version)) return "0.0.0";
+            int plus = version.IndexOf('+');
+            return plus >= 0 ? version.Substring(0, plus) : version;
+        }
+
+        private static bool IsNewer(string latest, string current)
+        {
+            if (Version.TryParse(latest, out var v1) && Version.TryParse(current, out var v2))
                 return v1 > v2;
-            }
-            catch { return false; }
+            return false;
         }
     }
 }
