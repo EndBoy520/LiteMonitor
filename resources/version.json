@@ -1,6 +1,6 @@
 {
-  "version": "1.0.3",
-  "changelog": "\t\n修复当开启windows显示缩放时，界面错乱的bug",
-  "releaseDate": "2025-11-21",
+  "version": "1.0.4",
+  "changelog": "新增横屏模式、支持选择网卡/磁盘、防拖出桌面，自定义刷新率等多个功能。",
+  "releaseDate": "2025-11-23",
   "downloadUrl": "https://github.com/Diorser/LiteMonitor/releases"
 }
