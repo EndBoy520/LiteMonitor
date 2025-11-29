@@ -1,6 +1,6 @@
 {
-  "version": "1.0.7",
-  "changelog": "新增一键自动更新版本功能。不用再手动下载替换文件。",
-  "releaseDate": "2025-11-28",
+  "version": "1.0.8",
+  "changelog": "新增：CPU/GPU的频率与功耗监控",
+  "releaseDate": "2025-11-29",
   "downloadUrl": "https://github.com/Diorser/LiteMonitor/releases"
 }
