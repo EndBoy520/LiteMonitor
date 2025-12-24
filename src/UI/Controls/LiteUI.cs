@@ -172,7 +172,7 @@ namespace LiteMonitor.src.UI.Controls
             Text = text; // 设置文案
             Padding = new Padding(2); 
             ForeColor = UIColors.TextMain;
-            Font = new Font("Segoe UI", 9F);
+            Font = new Font("Microsoft YaHei UI", 9F);
         } 
     }
 

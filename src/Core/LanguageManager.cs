@@ -60,15 +60,23 @@ namespace LiteMonitor.src.Core
 
         public static void ClearOverrides() => _overrides.Clear();
 
-        public static string T(string key)
+        // [新增] 获取原始翻译值（这是基础逻辑）
+        public static string GetOriginal(string key)
         {
-            // ★★★ 3. 核心修改：优先检查覆盖值 ★★★
-            if (_overrides.TryGetValue(key, out var overrideVal)) return overrideVal;
-
-            // 原有逻辑
+            // 1. 查原始字典
             if (_texts.TryGetValue(key, out var val)) return val;
+
+            // 2. 没找到则回退到 Key 的后缀
             int dot = key.IndexOf('.');
             return dot >= 0 ? key[(dot + 1)..] : key;
+        }
+        public static string T(string key)
+        {
+            // 1. 优先检查用户自定义覆盖
+            if (_overrides.TryGetValue(key, out var overrideVal)) return overrideVal;
+
+            // 2. 没有覆盖，就直接复用基础逻辑
+            return GetOriginal(key);
         }
 
         private static Dictionary<string, string> Flatten(JsonElement element, string prefix = "")

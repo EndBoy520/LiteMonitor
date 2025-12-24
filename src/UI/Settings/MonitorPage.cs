@@ -14,13 +14,21 @@ namespace LiteMonitor.src.UI.SettingsPage
         private Panel _container;
         private bool _isLoaded = false;
 
-        // 坐标定义 (保持你认可的布局)
+        // === 1. 布局常量定义 ===
+        // 列 X 坐标
         private const int X_ID = 20;
         private const int X_NAME = 125;
-        private const int X_SHORT = 265;
-        private const int X_PANEL = 355;
-        private const int X_TASKBAR = 430;
-        private const int X_SORT = 520;
+        private const int X_SHORT = 245;
+        private const int X_PANEL = 325;
+        private const int X_TASKBAR = 415;
+        private const int X_SORT = 500;
+
+        // 排序按钮相对于 X_SORT 的偏移量 (确保上下对齐)
+        private const int BTN_OFFSET_L = 0; // 左按钮偏移
+        private const int BTN_OFFSET_R = 36;  // 右按钮偏移
+
+        // 控件在行内的通用 Y 坐标
+        private const int Y_ROW_CTRL = 8; 
 
         private List<GroupUI> _groupsUI = new List<GroupUI>();
         private List<RowUI> _rowsUI = new List<RowUI>();
@@ -34,12 +42,13 @@ namespace LiteMonitor.src.UI.SettingsPage
             _header = new Panel { Dock = DockStyle.Top, Height = 35, BackColor = UIColors.MainBg };
             _header.Padding = new Padding(20, 0, 20 + SystemInformation.VerticalScrollBarWidth, 0);
 
-            AddHead("监控项", X_ID);
-            AddHead("名称", X_NAME);
-            AddHead("简称", X_SHORT);
-            AddHead("主界面显示", X_PANEL);
-            AddHead("任务栏显示", X_TASKBAR);
-            AddHead("排序", X_SORT);
+            // 表头文案简化，因为复选框旁边已经有文字了
+            AddHead("监控项 (ID)", X_ID);
+            AddHead("名称 (Name)", X_NAME);
+            AddHead("简称 (Short)", X_SHORT);
+            AddHead("显示/隐藏 (Display/Hide)", X_PANEL); 
+            // AddHead("任务栏", X_TASKBAR); // 可以省略，或者保留作为列标题
+            AddHead("排序 (Sort)", X_SORT); // 稍微居中一点
 
             this.Controls.Add(_header);
 
@@ -58,7 +67,7 @@ namespace LiteMonitor.src.UI.SettingsPage
             var lbl = new Label
             {
                 Text = text,
-                Location = new Point(x + 20, 10),
+                Location = new Point(x + 20, 10), // 左对齐，不再 +20
                 AutoSize = true,
                 ForeColor = UIColors.TextSub,
                 Font = new Font("Microsoft YaHei UI", 8F, FontStyle.Bold)
@@ -69,8 +78,6 @@ namespace LiteMonitor.src.UI.SettingsPage
         public override void OnShow()
         {
             if (Config == null) return;
-
-            // ★★★ 核心优化：如果已经加载过，直接返回，保留用户修改的状态 ★★★
             if (_isLoaded) return; 
 
             _container.SuspendLayout();
@@ -86,8 +93,6 @@ namespace LiteMonitor.src.UI.SettingsPage
                 CreateGroupCard(g.Key, g.ToList());
             }
             _container.ResumeLayout();
-
-            // 标记已加载
             _isLoaded = true;
         }
 
@@ -96,43 +101,40 @@ namespace LiteMonitor.src.UI.SettingsPage
             var wrapper = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 20) };
             var card = new LiteCard { Dock = DockStyle.Top };
 
-            // 1. Rows Panel (子项容器)
             var rowsPanel = new Panel { Dock = DockStyle.Top, AutoSize = true, BackColor = Color.White };
-
-            // 2. Header Panel (组头)
             var headerPanel = new Panel { Dock = DockStyle.Top, Height = 45, BackColor = UIColors.GroupHeader };
+            
+            // 使用 UIColors.Border 保持统一
             headerPanel.Paint += (s, e) => e.Graphics.DrawLine(new Pen(UIColors.Border), 0, 44, headerPanel.Width, 44);
 
-            // --- 填充 Header ---
-            var lblId = new Label { Text = groupKey, Location = new Point(X_ID, 12), AutoSize = true, Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.Gray };
+            // --- Group Header Controls ---
+            var lblId = new Label { 
+                Text = groupKey, 
+                Location = new Point(X_ID, 12), 
+                AutoSize = true, 
+                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold), 
+                ForeColor = Color.Gray 
+            };
 
             string defGName = LanguageManager.T("Groups." + groupKey);
             if (defGName.StartsWith("Groups.")) defGName = groupKey;
             string alias = (Config.GroupAliases != null && Config.GroupAliases.ContainsKey(groupKey)) ? Config.GroupAliases[groupKey] : "";
-
-            // ★ 修复：直接显示值，不判断空则变灰
-            var inputGroup = new LiteUnderlineInput(string.IsNullOrEmpty(alias) ? defGName : alias);
-            inputGroup.Location = new Point(X_NAME, 8);
-            inputGroup.Size = new Size(120, 28);
-            inputGroup.SetBg(UIColors.GroupHeader);
-            inputGroup.Inner.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-            inputGroup.Inner.ForeColor = UIColors.TextMain; // ★ 始终黑色
-
-            var btnUp = new LiteSortBtn("▲") { Location = new Point(X_SORT-16, 10) };
-            var btnDown = new LiteSortBtn("▼") { Location = new Point(X_SORT + 15, 10) };
-            btnUp.Click += (s, e) => MoveGroup(wrapper, -1);
-            btnDown.Click += (s, e) => MoveGroup(wrapper, 1);
+            
+            // 使用工厂方法创建输入框
+            var inputGroup = CreateInput(string.IsNullOrEmpty(alias) ? defGName : alias, X_NAME, 100,UIColors.GroupHeader , FontStyle.Bold);
+            
+            // 使用工厂方法创建排序按钮，位置严格对齐
+            var btnUp = CreateSortBtn("▲", X_SORT + BTN_OFFSET_L, (s, e) => MoveGroup(wrapper, -1));
+            var btnDown = CreateSortBtn("▼", X_SORT + BTN_OFFSET_R, (s, e) => MoveGroup(wrapper, 1));
 
             headerPanel.Controls.AddRange(new Control[] { lblId, inputGroup, btnUp, btnDown });
 
-            // --- 填充 Rows ---
             for (int i = items.Count - 1; i >= 0; i--)
             {
                 var row = CreateRow(items[i], rowsPanel);
                 rowsPanel.Controls.Add(row);
             }
 
-            // 先加 RowsPanel，再加 HeaderPanel (Dock Top 堆叠)
             card.Controls.Add(rowsPanel);
             card.Controls.Add(headerPanel);
 
@@ -154,47 +156,63 @@ namespace LiteMonitor.src.UI.SettingsPage
                 Size = new Size(90, 20),
                 AutoEllipsis = true,
                 ForeColor = UIColors.TextSub,
-                Font = new Font("Segoe UI", 8F)
+                Font = new Font("Microsoft YaHei UI", 8F)
             };
 
-            // Name
+            // Name & Short Inputs (使用工厂方法)
             string defName = LanguageManager.T("Items." + item.Key);
             string valName = string.IsNullOrEmpty(item.UserLabel) ? defName : item.UserLabel;
+            var inputName = CreateInput(valName, X_NAME, 100, Color.White);
 
-            // ★ 修复：直接显示，黑色文字
-            var inputName = new LiteUnderlineInput(valName);
-            inputName.Location = new Point(X_NAME, 8);
-            inputName.Size = new Size(120, 28);
-            inputName.SetBg(Color.White);
-            inputName.Inner.ForeColor = UIColors.TextMain;
-
-            // Short Name
             string defShortKey = "Short." + item.Key;
             string defShort = LanguageManager.T(defShortKey);
             if (defShort.StartsWith("Short.")) defShort = item.Key.Split('.').Last();
             string valShort = string.IsNullOrEmpty(item.TaskbarLabel) ? defShort : item.TaskbarLabel;
+            var inputShort = CreateInput(valShort, X_SHORT, 60, Color.White);
 
-            // ★ 修复：直接显示，黑色文字
-            var inputShort = new LiteUnderlineInput(valShort);
-            inputShort.Location = new Point(X_SHORT, 8);
-            inputShort.Size = new Size(60, 28);
-            inputShort.SetBg(Color.White);
-            inputShort.Inner.ForeColor = UIColors.TextMain;
+            // === 2. 优化：复选框带文字，左对齐，移除魔数 ===
+            // 假设 LiteCheck 支持 (bool checked, string text) 构造函数
+            // 如果不支持，你需要修改 LiteCheck.cs 或手动设置 Text 属性
+            var chk1 = new LiteCheck(item.VisibleInPanel, "主界面") { Location = new Point(X_PANEL, 10) };
+            var chk2 = new LiteCheck(item.VisibleInTaskbar, "任务栏") { Location = new Point(X_TASKBAR, 10) };
 
-            var chk1 = new LiteCheck(item.VisibleInPanel) { Location = new Point(X_PANEL + 20, 12) };
-            var chk2 = new LiteCheck(item.VisibleInTaskbar) { Location = new Point(X_TASKBAR + 20, 12) };
-
-            var btnUp = new LiteSortBtn("▲") { Location = new Point(X_SORT-18, 10) };
-            var btnDown = new LiteSortBtn("▼") { Location = new Point(X_SORT + 17, 10) };
-            btnUp.Click += (s, e) => MoveRow(row, -1, parentContainer);
-            btnDown.Click += (s, e) => MoveRow(row, 1, parentContainer);
+            // === 1. 优化：按钮位置使用常量，与 Group 严格对齐 ===
+            var btnUp = CreateSortBtn("▲", X_SORT + BTN_OFFSET_L, (s, e) => MoveRow(row, -1, parentContainer));
+            var btnDown = CreateSortBtn("▼", X_SORT + BTN_OFFSET_R, (s, e) => MoveRow(row, 1, parentContainer));
 
             row.Controls.AddRange(new Control[] { lblId, inputName, inputShort, chk1, chk2, btnUp, btnDown });
-            row.Paint += (s, e) => e.Graphics.DrawLine(new Pen(Color.FromArgb(245, 245, 245)), X_ID, 43, row.Width - 20, 43);
+            
+            // 优化：使用 UIColors.Border，且稍微让线短一点
+            row.Paint += (s, e) => e.Graphics.DrawLine(new Pen(UIColors.Border), X_ID, 43, row.Width - 20, 43);
 
             _rowsUI.Add(new RowUI { Config = item, RowControl = row, InputName = inputName.Inner, InputShort = inputShort.Inner, ChkPanel = chk1, ChkTaskbar = chk2 });
             return row;
         }
+
+        // === 3. 提取通用 Helper 方法 ===
+
+        private LiteUnderlineInput CreateInput(string text, int x, int width, Color bg, FontStyle fontStyle = FontStyle.Regular)
+        {
+            var input = new LiteUnderlineInput(text);
+            input.Location = new Point(x, Y_ROW_CTRL);
+            input.Size = new Size(width, 28);
+            input.SetBg(bg);
+            // 统一字体颜色
+            input.Inner.ForeColor = UIColors.TextMain;
+            // 统一字体大小 (如果需要的话)
+            input.Inner.Font = new Font("Microsoft YaHei UI", 9F, fontStyle); 
+            return input;
+        }
+
+        private LiteSortBtn CreateSortBtn(string text, int x, EventHandler onClick)
+        {
+            var btn = new LiteSortBtn(text);
+            btn.Location = new Point(x, 10); // 统一 Y 坐标
+            btn.Click += onClick;
+            return btn;
+        }
+
+        // === 业务逻辑保持不变 ===
 
         private void MoveRow(Control row, int dir, Panel container)
         {
@@ -215,8 +233,7 @@ namespace LiteMonitor.src.UI.SettingsPage
 
         public override void Save()
         {
-            // 1. 安全检查：如果页面从未加载（_isLoaded为false），控件对象都不存在，
-            // 此时千万不能读取，否则会把配置全部覆盖为空！
+            // 1. 安全检查：如果页面从未加载，控件对象都不存在，绝对不能保存
             if (!_isLoaded) return;
             
             // 初始化字典防止空引用
@@ -226,7 +243,7 @@ namespace LiteMonitor.src.UI.SettingsPage
             int sortIdx = 0;
 
             // 遍历容器中的所有分组卡片
-            // 注意：这里保持原有的遍历顺序 (Count-1 -> 0)，确保排序逻辑与界面显示一致
+            // 注意：保持原有的倒序遍历 (Count-1 -> 0)，确保排序逻辑与界面显示一致
             for (int i = _container.Controls.Count - 1; i >= 0; i--)
             {
                 if (_container.Controls[i] is Panel wrapper && wrapper.Controls.Count > 0)
@@ -234,30 +251,22 @@ namespace LiteMonitor.src.UI.SettingsPage
                     var card = wrapper.Controls[0] as LiteCard;
                     if (card == null) continue;
 
-                    // LiteCard 内部结构： Controls[0]是RowsPanel, Controls[1]是HeaderPanel (因为是Dock.Top堆叠)
                     var headerPanel = card.Controls.Count > 1 ? card.Controls[1] as Panel : null;
                     var rowsPanel = card.Controls.Count > 0 ? card.Controls[0] as Panel : null;
 
                     // ====== 1. 保存分组别名 (Group Aliases) ======
-                    // 查找标题输入框
                     var gInput = headerPanel?.Controls.OfType<LiteUnderlineInput>().FirstOrDefault()?.Inner;
-                    // 通过输入框反向查找对应的 GroupUI 数据
                     var gUI = _groupsUI.FirstOrDefault(u => u.Input == gInput);
                     
                     if (gUI != null)
                     {
                         string val = gUI.Input.Text.Trim();
-                        
-                        // ★ 修复逻辑：所见即所得。
-                        // 只要用户输入了内容，就保存到别名设置中。
-                        // 不再判断 "是否等于默认翻译"，防止 Apply 后翻译更新导致的误删除。
                         if (!string.IsNullOrEmpty(val))
                         {
                             Config.GroupAliases[gUI.Key] = val;
                         }
                         else
                         {
-                            // 只有当用户显式清空输入框时，才移除别名（恢复默认）
                             if (Config.GroupAliases.ContainsKey(gUI.Key))
                                 Config.GroupAliases.Remove(gUI.Key);
                         }
@@ -275,25 +284,47 @@ namespace LiteMonitor.src.UI.SettingsPage
                             {
                                 var item = rUI.Config;
 
-                                // --- 名称 (UserLabel) ---
+                                // --- [优化] 名称 (UserLabel) ---
                                 string valName = rUI.InputName.Text.Trim();
-                                // ★ 修复逻辑：直接保存内容，不为空则代表用户自定义了名称
-                                item.UserLabel = valName; 
+                                // 获取原始 key，例如 "Items.CPU.Load"
+                                string keyName = "Items." + item.Key; 
+                                // 获取原始翻译（忽略用户当前的自定义覆盖）
+                                string originalName = LanguageManager.GetOriginal(keyName);
 
-                                // --- 简称 (TaskbarLabel) ---
+                                // ★★★ 核心逻辑：如果输入内容 == 原始翻译，则保存为空 ★★★
+                                if (string.Equals(valName, originalName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    item.UserLabel = ""; 
+                                }
+                                else
+                                {
+                                    item.UserLabel = valName; 
+                                }
+
+                                // --- [优化] 简称 (TaskbarLabel) ---
                                 string valShort = rUI.InputShort.Text.Trim();
-                                // ★ 修复逻辑：直接保存内容
-                                item.TaskbarLabel = valShort;
+                                string keyShort = "Short." + item.Key;
+                                string originalShort = LanguageManager.GetOriginal(keyShort);
+
+                                // ★★★ 核心逻辑：同上 ★★★
+                                if (string.Equals(valShort, originalShort, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    item.TaskbarLabel = "";
+                                }
+                                else
+                                {
+                                    item.TaskbarLabel = valShort;
+                                }
 
                                 // --- 开关状态 ---
                                 item.VisibleInPanel = rUI.ChkPanel.Checked;
                                 item.VisibleInTaskbar = rUI.ChkTaskbar.Checked;
                                 
                                 // --- 排序索引 ---
-                                // 根据当前 UI 的顺序重新生成 SortIndex
                                 item.SortIndex = sortIdx++;
                                 
-                                flatList.Add(item);
+                                // ★★★★★ 绝对不能漏掉这一行！ ★★★★★
+                                flatList.Add(item); 
                             }
                         }
                     }

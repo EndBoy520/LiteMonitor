@@ -59,7 +59,6 @@ namespace LiteMonitor.src.UI.SettingsPage
 
             // 1. Language
             _cmbLang = new LiteComboBox();
-            _cmbLang.Items.Add("English (en)");
             string langDir = Path.Combine(AppContext.BaseDirectory, "resources/lang");
             if (Directory.Exists(langDir))
             {
@@ -98,7 +97,7 @@ namespace LiteMonitor.src.UI.SettingsPage
             // 3. TopMost (★ 传入 "Enable")
             _chkTopMost = new LiteCheck(Config.TopMost, "Enable");
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.TopMost"), _chkTopMost));
-            
+
              _chkClamp = new LiteCheck(Config.ClampToScreen, "Enable");
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.ClampToScreen"), _chkClamp));
 
@@ -126,16 +125,14 @@ namespace LiteMonitor.src.UI.SettingsPage
 
             // Disk
             _cmbDisk = new LiteComboBox();
-            _cmbDisk.Items.Add("Auto");
             foreach (var d in HardwareMonitor.ListAllDisks()) _cmbDisk.Items.Add(d);
-            SetComboVal(_cmbDisk, string.IsNullOrEmpty(Config.PreferredDisk) ? "Auto" : Config.PreferredDisk);
+            SetComboVal(_cmbDisk, string.IsNullOrEmpty(Config.PreferredDisk) ? LanguageManager.T("Menu.Auto") : Config.PreferredDisk);
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.DiskSource"), _cmbDisk));
 
             // Network
             _cmbNet = new LiteComboBox();
-            _cmbNet.Items.Add("Auto");
             foreach (var n in HardwareMonitor.ListAllNetworks()) _cmbNet.Items.Add(n);
-            SetComboVal(_cmbNet, string.IsNullOrEmpty(Config.PreferredNetwork) ? "Auto" : Config.PreferredNetwork);
+            SetComboVal(_cmbNet, string.IsNullOrEmpty(Config.PreferredNetwork) ? LanguageManager.T("Menu.Auto") : Config.PreferredNetwork);
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.NetworkSource"), _cmbNet));
 
             AddGroupToPage(group);
