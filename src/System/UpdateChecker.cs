@@ -35,6 +35,8 @@ namespace LiteMonitor
 
             // GitHub RAW（自动 fallback 使用）
              "https://raw.githubusercontent.com/Diorser/LiteMonitor/master/resources/version.json",
+             // Gitee RAW（自动 fallback 使用）
+             "https://gitee.com/Diorser/LiteMonitor/raw/master/resources/version.json",
         };
 
         // ========================================================
@@ -42,11 +44,15 @@ namespace LiteMonitor
         // ========================================================
         private static readonly string[] Mirrors =
         {
-            // Github Releases
-            "https://github.com/Diorser/LiteMonitor/releases/download/v{0}/LiteMonitor_v{0}-win-x64.zip",
 
             // 国内 CDN
-            "https://litemonitor.cn/update/LiteMonitor_v{0}-win-x64.zip"
+            "https://litemonitor.cn/update/LiteMonitor_v{0}-win-x64.zip",
+            // Github Releases
+            "https://github.com/Diorser/LiteMonitor/releases/download/v{0}/LiteMonitor_v{0}-win-x64.zip",
+            // Gitee Releases
+            "https://gitee.com/Diorser/LiteMonitor/releases/download/v{0}/LiteMonitor_v{0}-win-x64.zip",
+
+            
         };
 
 
