@@ -495,9 +495,17 @@ namespace LiteMonitor
         // ========== 菜单选项更改后重建菜单 ==========
         public void RebuildMenus()
         {
+            // ★★★ 修复方案：先销毁旧菜单，释放 GDI 句柄和内存 ★★★
+            if (ContextMenuStrip != null)
+            {
+                ContextMenuStrip.Dispose();
+                ContextMenuStrip = null;
+            }
+
             var menu = MenuManager.Build(this, _cfg, _ui);
             //_tray.ContextMenuStrip = menu;
             ContextMenuStrip = menu;
+            UIUtils.ClearBrushCache(); // 确保你有这个静态方法清空字典
         }
 
         // ========== 限制窗口不能拖出屏幕边界 ==========

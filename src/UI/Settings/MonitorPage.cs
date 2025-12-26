@@ -60,7 +60,11 @@ namespace LiteMonitor.src.UI.SettingsPage
             if (Config == null || _isLoaded) return;
 
             _container.SuspendLayout();
-            _container.Controls.Clear();
+            while (_container.Controls.Count > 0)
+            {
+                Control c = _container.Controls[0];
+                c.Dispose(); // 这句是省内存的关键
+            }
 
             // 1. 数据准备 (SortIndex 越小越靠前)
             var allItems = Config.MonitorItems.OrderBy(x => x.SortIndex).ToList();

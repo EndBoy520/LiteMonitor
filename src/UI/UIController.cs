@@ -83,6 +83,7 @@ namespace LiteMonitor
             _timer.Interval = Math.Max(80, _cfg.RefreshMs);
             _form.Invalidate();
             _form.Update();
+            UIUtils.ClearBrushCache(); // 确保你有这个静态方法清空字典
         }
 
         public void RebuildLayout()

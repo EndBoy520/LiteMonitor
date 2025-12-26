@@ -111,6 +111,9 @@ namespace LiteMonitor.src.SystemServices
         {
             _computer.Close();
             _cpuPerfCounter?.Dispose(); // ★ 新增
+            // ★★★ 新增：清理网络状态缓存 ★★★
+            _netStates.Clear(); 
+            _map.Clear();
         }
 
         // =======================================================================

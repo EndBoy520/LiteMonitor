@@ -28,6 +28,7 @@ namespace LiteMonitor
 
         private System.Collections.Generic.List<Column>? _cols;
         private readonly MainForm _mainForm;
+        private ContextMenuStrip? _currentMenu;
 
         private const int WM_RBUTTONUP = 0x0205;
         
@@ -83,6 +84,7 @@ namespace LiteMonitor
             {
                 _timer.Stop();
                 _timer.Dispose();
+                _currentMenu?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -97,11 +99,29 @@ namespace LiteMonitor
             base.WndProc(ref m);
         }
 
+        // 2. 修改 ShowContextMenu 方法：
         private void ShowContextMenu()
         {
-            var menu = MenuManager.Build(_mainForm, _cfg, _ui);
+            // ★★★ 修复方案：显示新菜单前，强制销毁上一次的菜单 ★★★
+            if (_currentMenu != null)
+            {
+                _currentMenu.Dispose();
+                _currentMenu = null;
+            }
+
+            _currentMenu = MenuManager.Build(_mainForm, _cfg, _ui);
+            
+            // 必须确保窗口激活，否则点击菜单外无法自动关闭
             SetForegroundWindow(this.Handle);
-            menu.Show(Cursor.Position);
+            
+            // 监听菜单关闭事件，自动清理（可选，但推荐）
+            _currentMenu.Closed += (s, e) => 
+            {
+                // 延迟清理或不做处理，等待下次 Show 时清理均可
+                // 这里留空即可，依靠下次 Show 时的 Dispose 逻辑
+            };
+
+            _currentMenu.Show(Cursor.Position);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
