@@ -104,6 +104,7 @@
     "TaskbarCustomTip": "⚠️배경색을 작업 표시줄 색상과 맞춰주세요.",
     "ScreenColorPicker": "색상 선택기",
     "ScreenColorPickerTip": "배경색 설정:",
+    "HorizontalFollowsTaskbar": "바형은 작업줄 순서 따름",
     "LabelColor": "라벨",
     "ValueSafeColor": "정상 값",
     "ValueWarnColor": "경고 값",

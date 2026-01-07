@@ -39,6 +39,8 @@ namespace LiteMonitor
 
         // ====== 任务栏 ======
         public bool ShowTaskbar { get; set; } = false;
+        // ★★★ 新增：横条模式是否跟随任务栏布局？ ★★★
+        public bool HorizontalFollowsTaskbar { get; set; } = false;
         public bool HideMainForm { get; set; } = false;
         public bool HideTrayIcon { get; set; } = false;
         public bool TaskbarAlignLeft { get; set; } = true;
@@ -159,6 +161,12 @@ namespace LiteMonitor
             catch { }
             if (s.GroupAliases == null) s.GroupAliases = new Dictionary<string, string>();
             if (s.MonitorItems == null || s.MonitorItems.Count == 0) s.InitDefaultItems();
+            // ★★★ 新增：旧版本数据兼容 ★★★
+            // 如果所有项的 TaskbarSortIndex 都是 0（说明是旧配置），则初始化为 SortIndex
+            if (s.MonitorItems.All(x => x.TaskbarSortIndex == 0))
+            {
+                foreach (var item in s.MonitorItems) item.TaskbarSortIndex = item.SortIndex;
+            }
             s.SyncToLanguage();
             return s;
         }
@@ -205,6 +213,8 @@ namespace LiteMonitor
         public bool VisibleInPanel { get; set; } = true;
         public bool VisibleInTaskbar { get; set; } = false;
         public int SortIndex { get; set; } = 0;
+        // ★★★ 新增：任务栏独立排序索引 ★★★
+        public int TaskbarSortIndex { get; set; } = 0;
     }
 
     public class ThresholdsSet

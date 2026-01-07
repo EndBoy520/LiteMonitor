@@ -104,6 +104,7 @@
     "TaskbarCustomTip": "⚠️Hintergrund passend zur Taskleiste wählen.",
     "ScreenColorPicker": "Farbwähler",
     "ScreenColorPickerTip": "Hintergrundfarbe setzen auf:",
+    "HorizontalFollowsTaskbar": "Leiste folgt Taskleiste",
     "LabelColor": "Label",
     "ValueSafeColor": "Wert",
     "ValueWarnColor": "Warnung",

@@ -104,6 +104,7 @@
     "TaskbarCustomTip": "⚠️背景色はタスクバーの色に合わせてください。",
     "ScreenColorPicker": "カラーピッカー",
     "ScreenColorPickerTip": "背景色を設定:",
+    "HorizontalFollowsTaskbar": "バーはタスクバー順に表示",
     "LabelColor": "ラベル",
     "ValueSafeColor": "通常値",
     "ValueWarnColor": "警告値",

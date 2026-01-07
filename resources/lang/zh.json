@@ -118,6 +118,7 @@
     "sort": "显示顺序",
     "Taskbar": "任务栏",
     "MainForm": "主界面",
+    "HorizontalFollowsTaskbar": "横条模式采用任务栏排序",
 
     "__Comment_Page4__": "--- 4. 告警阈值设置 (ThresholdPage) ---",
     "Thresholds": "告警阈值设置",

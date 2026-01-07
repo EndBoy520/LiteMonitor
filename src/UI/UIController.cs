@@ -249,30 +249,40 @@ namespace LiteMonitor
         {
             var cols = new List<Column>();
 
-            // 1. 筛选并排序
-            var items = _cfg.MonitorItems
-                .Where(x => forTaskbar ? x.VisibleInTaskbar : x.VisibleInPanel)
-                .OrderBy(x => x.SortIndex)
-                .ToList();
+            // 1. 筛选 (保持不变)
+            var query = _cfg.MonitorItems
+                .Where(x => forTaskbar ? x.VisibleInTaskbar : x.VisibleInPanel);
 
-            // 2. 两两配对 (流式布局)
-            // ★★★ 修改：单行模式下步长为1，否则为2 ★★★
+            // 2. 排序 (★ 修改此处 ★)
+            // 逻辑：
+            // A. 如果正在构建任务栏 (forTaskbar == true) -> 使用 TaskbarSortIndex
+            // B. 如果正在构建主界面横条 (forTaskbar == false) 且 开启了跟随 (HorizontalFollowsTaskbar) -> 使用 TaskbarSortIndex
+            // C. 其他情况 (普通主界面排序) -> 使用 SortIndex
+            
+            if (forTaskbar || _cfg.HorizontalFollowsTaskbar)
+            {
+                query = query.OrderBy(x => x.TaskbarSortIndex);
+            }
+            else
+            {
+                query = query.OrderBy(x => x.SortIndex);
+            }
+
+            var items = query.ToList();
+
+            // 3. 两两配对 (保持不变)
             bool singleLine = forTaskbar && _cfg.TaskbarSingleLine;
             int step = singleLine ? 1 : 2;
 
             for (int i = 0; i < items.Count; i += step)
             {
                 var col = new Column();
-                
-                // 上面的项 (始终存在)
                 col.Top = CreateMetric(items[i]);
 
-                // 下面的项 (单行模式下强制为 null)
                 if (!singleLine && i + 1 < items.Count)
                 {
-                    col.Bottom = CreateMetric(items[i+1]);
+                    col.Bottom = CreateMetric(items[i + 1]);
                 }
-                
                 cols.Add(col);
             }
 

@@ -104,6 +104,7 @@
     "TaskbarCustomTip": "⚠️Фон должен совпадать с панелью задач.",
     "ScreenColorPicker": "Выбор цвета",
     "ScreenColorPickerTip": "Цвет фона:",
+    "HorizontalFollowsTaskbar": "Полоса как панель задач",
     "LabelColor": "Текст",
     "ValueSafeColor": "Норма",
     "ValueWarnColor": "Внимание",

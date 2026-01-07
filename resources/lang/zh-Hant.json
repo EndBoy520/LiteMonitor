@@ -15,7 +15,7 @@
     "CPU.Power": "CPU功耗",
     "GPU.Load": "GPU使用率",
     "GPU.Temp": "GPU溫度",
-    "GPU.VRAM": "顯示記憶體佔用",
+    "GPU.VRAM": "顯存佔用",
     "GPU.Clock": "GPU頻率",
     "GPU.Power": "GPU功耗",
     "MEM.Load": "記憶體佔用",
@@ -108,6 +108,7 @@
     "BackgroundColor": "字體背景色",
     "ScreenColorPicker": "螢幕取色工具",
     "ScreenColorPickerTip": "是否將字體背景顏色設為：",
+    "HorizontalFollowsTaskbar": "橫條模式採用工作列排序",
 
     "__Comment_Page3__": "--- 3. 監控項顯示 (MonitorPage) ---",
     "MonitorItemDisplay": "監控項顯示",

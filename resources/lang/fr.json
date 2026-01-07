@@ -104,6 +104,7 @@
     "TaskbarCustomTip": "⚠️Le fond doit correspondre à la barre.",
     "ScreenColorPicker": "Sélecteur",
     "ScreenColorPickerTip": "Couleur fond:",
+    "HorizontalFollowsTaskbar": "Barre suit barre tâches",
     "LabelColor": "Label",
     "ValueSafeColor": "Valeur",
     "ValueWarnColor": "Alerte",
