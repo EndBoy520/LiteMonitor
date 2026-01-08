@@ -140,6 +140,9 @@ namespace LiteMonitor
                     {
                         // 任务栏模式：紧凑固定左/右内间距
                         paddingX = (int)Math.Round(10 * dpi);
+                        if (!_settings.TaskbarFontBold){
+                            paddingX = (int)Math.Round(8 * dpi);
+                        }                            
                     }
                     // ====== 列宽（不再限制最大/最小宽度）======
                     col.ColumnWidth = wLabel + wValue + paddingX;
