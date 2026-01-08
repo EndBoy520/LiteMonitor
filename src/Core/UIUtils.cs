@@ -234,7 +234,7 @@ namespace LiteMonitor.src.Core
 
             // 1. Adaptive (频率/功耗要转化成使用率数值)
             // ★★★ [新增] 风扇支持 ★★★
-            if (k.Contains("CLOCK") || k.Contains("POWER") || k.Contains("FAN"))
+            if (k.Contains("CLOCK") || k.Contains("POWER") || k.Contains("FAN") || k.Contains("PUMP"))
             {
                 value = GetAdaptivePercentage(key, value) * 100;
             }
@@ -263,7 +263,7 @@ namespace LiteMonitor.src.Core
             var th = cfg.Thresholds;
 
             // Load, VRAM, Mem，CLOCK/POWER，★ FAN
-            if (k.Contains("LOAD") || k.Contains("VRAM") || k.Contains("MEM")||k.Contains("CLOCK") || k.Contains("POWER") || k.Contains("FAN") && !k.Contains("PUMP"))
+            if (k.Contains("LOAD") || k.Contains("VRAM") || k.Contains("MEM")||k.Contains("CLOCK") || k.Contains("POWER") || k.Contains("FAN") || k.Contains("PUMP"))
                 return (th.Load.Warn, th.Load.Crit);
             
             // Temp
@@ -350,7 +350,7 @@ namespace LiteMonitor.src.Core
             // A. 统一计算进度百分比 (0.0 ~ 1.0)
             // ---------------------------------------------------------
             // ★★★ [新增] 风扇支持 ★★★
-            if (k.Contains("CLOCK") || k.Contains("POWER") || k.Contains("FAN"))
+            if (k.Contains("CLOCK") || k.Contains("POWER") || k.Contains("FAN") || k.Contains("PUMP"))
             {
                 // 复用 GetAdaptivePercentage (内部封装了读取 Settings 和 Max 的逻辑)
                 // 避免了在 DrawBar 里重写一遍 Settings 读取代码
