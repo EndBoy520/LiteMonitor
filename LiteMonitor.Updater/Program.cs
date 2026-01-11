@@ -77,9 +77,33 @@ namespace LiteMonitor.Updater
                     string rel = Path.GetRelativePath(realFolder, srcPath);
                     string destPath = Path.Combine(baseDir, rel);
 
-                    // 跳过 Updater 自身
+                    // ★★★ [修改] Updater 自更新逻辑 (重命名覆盖) ★★★
+                    // 检查是否为 Updater 程序本身 (兼容 LiteMonitor.Updater.exe)
                     if (rel.EndsWith("Updater.exe", StringComparison.OrdinalIgnoreCase))
-                        continue;
+                    {
+                        try 
+                        {
+                            // 1. 构造备份文件名 (.bak)
+                            string bakPath = destPath + ".bak";
+                            
+                            // 2. 如果之前有残留的 .bak，先尝试删掉
+                            if (File.Exists(bakPath)) File.Delete(bakPath);
+
+                            // 3. 核心：将正在运行的旧版 Updater 重命名为 .bak
+                            // Windows 允许重命名正在运行的 EXE
+                            if (File.Exists(destPath))
+                            {
+                                File.Move(destPath, bakPath);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                             // 记录错误但不中断，TryCopyFile 可能会因为文件被占而失败，那是预期的
+                             LogError(baseDir, $"Updater自更新重命名失败: {ex.Message}");
+                        }
+                        // 注意：这里删除了 continue，让代码继续往下执行 TryCopyFile
+                        // 此时 destPath 原位已经空出来了，可以写入新文件
+                    }
 
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
 

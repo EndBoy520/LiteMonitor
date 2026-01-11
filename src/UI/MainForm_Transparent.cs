@@ -749,19 +749,24 @@ namespace LiteMonitor
         private void CheckUpdateSuccess()
         {
             string tokenPath = Path.Combine(AppContext.BaseDirectory, "update_success");
+            // ★★★ [修正] 这里的路径改为 resources 目录下的 Updater.exe.bak ★★★
+            string updaterBak = Path.Combine(AppContext.BaseDirectory, "resources", "Updater.exe.bak");
 
             if (File.Exists(tokenPath))
             {
                 // 1. 尝试删除标志文件（防止下次启动重复提示）
                 try { File.Delete(tokenPath); } catch { }
+                // 2. 清理 resources 目录下的 Updater 备份文件
+                if (File.Exists(updaterBak))
+                {
+                    try { File.Delete(updaterBak); } catch { }
+                }
 
-                // 2. 方式 A：弹出气泡提示（推荐，不打扰）
+                // 3. 方式 A：弹出气泡提示（推荐，不打扰）
                 string title = "⚡️LiteMonitor_v" + UpdateChecker.GetCurrentVersion();
                 string content = _cfg.Language == "zh" ? "🎉 软件已成功更新到最新版本！" : "🎉 Software updated to latest version!";
                 ShowNotification(title, content, ToolTipIcon.Info);
 
-                // 2. 方式 B：或者弹窗提示（如果你喜欢强提醒）
-                // MessageBox.Show("软件已成功更新到最新版本！", "更新成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
