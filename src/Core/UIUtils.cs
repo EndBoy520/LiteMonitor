@@ -242,9 +242,8 @@ namespace LiteMonitor.src.Core
             if (string.IsNullOrWhiteSpace(value)) return value;
 
             // 1. 快速预处理
-            // 这里的 Replace 虽然也产生新字符串，但比 Regex 轻量。
-            // 如果追求极致，可以在 FormatValue 阶段就处理好，但这里先不动架构。
-            string clean = value.Replace("/s", "").Trim();
+            // ★★★ [修改] 在这里增加 Replace("FPS", "")，把 FPS 单位去掉 ★★★
+            string clean = value.Replace("/s", "").Replace("RPM", "R").Replace("FPS", "F").Trim();
 
             // 2. 手动寻找数字与单位的分界线 (替代 Regex)
             int splitIndex = -1;
@@ -264,17 +263,11 @@ namespace LiteMonitor.src.Core
 
             // 3. 分割字符串
             string numStr = clean.Substring(0, splitIndex);
-            string unit = clean.Substring(splitIndex).Trim();
+            string unit = clean.Substring(splitIndex).Trim();// ★★★ 关键点：.Trim() 去掉了前后的空格 ★★★
 
             // 4. 解析数值
             if (double.TryParse(numStr, out double num))
             {
-                // ★★★ 风扇单位特殊处理 ★★★
-                if (unit.Equals("RPM", StringComparison.OrdinalIgnoreCase))
-                {
-                    return ((int)Math.Round(num)).ToString() + "R";
-                }
-
                 // 智能缩略：>=100 去掉小数
                 return num >= 100
                     ? ((int)Math.Round(num)) + unit
