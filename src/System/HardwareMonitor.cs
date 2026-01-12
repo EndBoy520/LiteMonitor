@@ -76,8 +76,8 @@ namespace LiteMonitor.src.SystemServices
             _sensorMap = new SensorMap();
             _networkManager = new NetworkManager();
             _diskManager = new DiskManager();
-            _fpsCounter = new FpsCounter(); // <--- 新增
             _driverInstaller = new DriverInstaller(cfg, _computer, ReloadComputerSafe);
+            _fpsCounter = new FpsCounter(_driverInstaller); // <--- 新增
 
             // ★★★ [修改] 2. 将 Manager 注入给 ValueProvider ★★★
             _valueProvider = new HardwareValueProvider(_computer, cfg, _sensorMap, _networkManager, _diskManager, _fpsCounter, _perfCounterManager, _lock, _lastValidMap);
