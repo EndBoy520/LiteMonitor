@@ -62,8 +62,8 @@ namespace LiteMonitor.src.UI.Controls
             if (node == null || node.Bounds.Height <= 0) return;
             
             // 计算需要重绘的右侧区域宽度
-            // 包含：Value列 + Max列 + 右边距 (图标已移到左侧，不再包含)
-            int refreshWidth = UIUtils.S(ColValueWidth + ColMaxWidth + RightMargin + 10); 
+            // 包含：Value列 + Max列 + 右边距 + 你在 OnDrawNode 增加的间距 (25 + 20)
+            int refreshWidth = UIUtils.S(ColValueWidth + ColMaxWidth + RightMargin + 25 + 20); 
             int safeWidth = this.ClientSize.Width;
 
             Rectangle dirtyRect = new Rectangle(safeWidth - refreshWidth, node.Bounds.Y, refreshWidth, node.Bounds.Height);
@@ -99,10 +99,12 @@ namespace LiteMonitor.src.UI.Controls
             int xBase = w - UIUtils.S(RightMargin); 
             
             // Max 列区域
+            // 同步修改：使用 25 的间距
             int xMax = xBase - UIUtils.S(25) - UIUtils.S(ColMaxWidth);
             Rectangle maxRect = new Rectangle(xMax, fullRow.Y, UIUtils.S(ColMaxWidth), fullRow.Height);
 
             // Value 列区域 (在 Max 左侧)
+            // 同步修改：使用 20 的间距
             int xValue = xMax - UIUtils.S(20) - UIUtils.S(ColValueWidth);
             Rectangle valRect = new Rectangle(xValue, fullRow.Y, UIUtils.S(ColValueWidth), fullRow.Height);
 
