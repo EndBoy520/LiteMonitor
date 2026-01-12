@@ -91,7 +91,7 @@ namespace LiteMonitor.src.SystemServices
             // 局部递归函数
             void RegisterTo(IHardware hw)
             {
-                hw.Update();
+                //hw.Update();
 
                 // --- 填充 CPU 缓存 (用于加权平均) ---
                 if (hw.HardwareType == HardwareType.Cpu)

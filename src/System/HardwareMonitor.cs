@@ -100,7 +100,17 @@ namespace LiteMonitor.src.SystemServices
                     // 只有全部扫描完，才建立高速 Map
                     lock (_lock)
                     {
-                        _sensorMap.Rebuild(_computer, cfg);
+                        // 1. 先进行一次全量更新 (预热)
+                        // 这一步至关重要！它确保了随后 Rebuild 时，SensorMap 能读到传感器的数值，
+                        // 从而让"智能主板温度识别"等依赖数值的逻辑正常工作。
+                        foreach (var hw in _computer.Hardware)
+                        {
+                            hw.Update();
+                        }
+
+                        // 2. 数据有了，再建立映射
+                        // 此时 Rebuild 能读到刚才 Update 产生的数值，智能识别逻辑完美生效。
+                        _sensorMap.Rebuild(_computer, cfg); 
                     }
                     
                     await _driverInstaller.SmartCheckDriver();
