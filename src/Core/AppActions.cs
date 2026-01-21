@@ -201,7 +201,11 @@ namespace LiteMonitor.src.Core
                     if (!isRunning || targetPort != currentPort)
                     {
                         server.Stop();
-                        server.Start();
+                        if (!server.Start(out string err))
+                        {
+                            // 如果是自动应用设置时失败，暂时只记录日志，避免在设置界面疯狂弹窗
+                            System.Diagnostics.Debug.WriteLine("WebServer restart failed: " + err);
+                        }
                     }
                     // else: 已经在运行且端口没变，保持现状，不要断开连接
                 }

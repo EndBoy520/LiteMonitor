@@ -334,7 +334,16 @@ namespace LiteMonitor
                 // 2. 杀掉所有残留的 Updater 进程 (防止占用)
                 foreach (var p in Process.GetProcessesByName("Updater"))
                 {
-                    try { p.Kill(); } catch { }
+                    try 
+                    {
+                        // 优化：检查进程路径是否匹配，防止误杀其他软件的 Updater
+                        if (p.MainModule != null && 
+                            string.Equals(p.MainModule.FileName, updaterTarget, StringComparison.OrdinalIgnoreCase))
+                        {
+                            p.Kill(); 
+                        }
+                    } 
+                    catch { }
                 }
                 
                 // 给一点时间释放句柄

@@ -25,17 +25,17 @@
 
     <!-- 自动复制 themes 与 lang 目录下的所有文件 -->
     <ItemGroup>
-        <Content Include="resources\themes\*.*">
+        <Content Include="resources\themes\*.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <CopyToPublishDirectory>Always</CopyToPublishDirectory>
         </Content>
 
-        <Content Include="resources\lang\*.*">
+        <Content Include="resources\lang\*.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <CopyToPublishDirectory>Always</CopyToPublishDirectory>
         </Content>
 
-        <Content Include="resources\plugins\*.*">
+        <Content Include="resources\plugins\*.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <CopyToPublishDirectory>Always</CopyToPublishDirectory>
         </Content>

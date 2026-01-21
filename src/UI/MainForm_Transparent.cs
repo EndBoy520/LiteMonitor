@@ -809,7 +809,13 @@ namespace LiteMonitor
             if (_cfg.WebServerEnabled)
             {
                 // 确保你已经创建了 src/WebServer/LiteWebServer.cs
-                src.WebServer.LiteWebServer.Instance?.Start();
+                if (src.WebServer.LiteWebServer.Instance?.Start(out string err) == false)
+                {
+                     // 启动失败提示 (例如端口被占用)
+                     ShowNotification("WebServer Error", 
+                         (_cfg.Language == "zh" ? "Web服务启动失败: " : "Web Server Failed: ") + err, 
+                         ToolTipIcon.Error);
+                }
             }
 
             // ★★★ 修复：开机自启后置顶可能失效的问题 ★★★

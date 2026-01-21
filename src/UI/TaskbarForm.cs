@@ -29,6 +29,7 @@ namespace LiteMonitor
         private System.Collections.Generic.List<Column>? _cols;
         private readonly MainForm _mainForm;
         private ContextMenuStrip? _currentMenu;
+        private uint _wmTaskbarCreated;
 
         private const int WM_RBUTTONUP = 0x0205;
         
@@ -70,6 +71,8 @@ namespace LiteMonitor
 
             CheckTheme(true);
             FindHandles();
+
+            _wmTaskbarCreated = RegisterWindowMessage("TaskbarCreated");
             
             AttachToTaskbar();
             // ★★★ 补充：挂载到任务栏后，再次强制刷新一下穿透状态 ★★★
@@ -95,6 +98,16 @@ namespace LiteMonitor
 
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == (int)_wmTaskbarCreated)
+            {
+                // Explorer 重启后，必须重新查找句柄并挂载
+                FindHandles();
+                AttachToTaskbar();
+                // 强制更新一次位置
+                if (Width > 0) UpdatePlacement(Width);
+                return;
+            }
+
             if (!_isWin11 && m.Msg == WM_RBUTTONUP)
             {
                 this.BeginInvoke(new Action(ShowContextMenu));
@@ -180,6 +193,7 @@ namespace LiteMonitor
         [DllImport("user32.dll")] private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
         [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)] private static extern IntPtr GetParent(IntPtr hWnd);
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] private static extern uint RegisterWindowMessage(string lpString);
 
         private const int GWL_STYLE = -16;
         private const int GWL_EXSTYLE = -20;

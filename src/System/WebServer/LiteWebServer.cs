@@ -36,10 +36,11 @@ namespace LiteMonitor.src.WebServer
             Instance = this;
         }
 
-        public void Start()
+        public bool Start(out string errorMsg)
         {
-            if (_isRunning) return;
-            if (!_cfg.WebServerEnabled) return;
+            errorMsg = "";
+            if (_isRunning) return true;
+            if (!_cfg.WebServerEnabled) return true;
 
             try
             {
@@ -54,10 +55,14 @@ namespace LiteMonitor.src.WebServer
                 
                 // 2. 启动数据广播循环 (WebSocket 推送)
                 Task.Run(BroadcastLoop);
+                
+                return true;
             }
             catch (Exception ex)
             {
+                errorMsg = ex.Message;
                 Debug.WriteLine("WebServer Start Error: " + ex.Message);
+                return false;
             }
         }
 
