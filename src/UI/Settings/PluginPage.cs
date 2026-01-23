@@ -386,20 +386,10 @@ namespace LiteMonitor.src.UI.SettingsPage
                 var btnAdd = new LiteButton(LanguageManager.T("Menu.PluginAddTarget"), false, true); 
                 btnAdd.Click += (s, e) => {
                     var newTarget = new Dictionary<string, string>();
-                    if (targetInputs != null)
+                    // [New Feature] Populate default values from template definition
+                    foreach(var input in targetInputs)
                     {
-                        foreach(var input in targetInputs)
-                        {
-                            // [Requirement 1] Empty for new text targets, but keep DefaultValue for selects
-                            if (input.Type == "select")
-                            {
-                                newTarget[input.Key] = input.DefaultValue;
-                            }
-                            else
-                            {
-                                newTarget[input.Key] = ""; 
-                            }
-                        }
+                        newTarget[input.Key] = input.DefaultValue;
                     }
                     inst.Targets.Add(newTarget);
                     _modifiedInstanceIds.Add(inst.Id);

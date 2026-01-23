@@ -19,6 +19,7 @@ namespace LiteMonitor
         // ★★★ 双助手架构 ★★★
         private readonly MainFormWinHelper _winHelper;
         private readonly MainFormBizHelper _bizHelper;
+        private readonly int _wmTaskbarCreated;
 
         private Point _dragOffset;
         private bool _uiDragging = false;
@@ -123,6 +124,10 @@ namespace LiteMonitor
 
             // 2. 初始化双助手
             _winHelper = new MainFormWinHelper(this);
+            
+            //资源管理器重启监听
+            _wmTaskbarCreated = MainFormWinHelper.RegisterTaskbarCreatedMessage();
+
             // ★★★ 关键修复：补全 SetStyle 调用，开启透明支持 ★★★
             // 原始代码中这里调用了 SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             // 解耦时漏掉了这一行，导致背景无法透明，显示为黑色或系统默认色
@@ -205,6 +210,30 @@ namespace LiteMonitor
             _cfg.HideMainForm = true;
             _cfg.Save();
             _bizHelper.RebuildMenus();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == _wmTaskbarCreated && _wmTaskbarCreated != 0)
+            {
+                // [Fix] Explorer 重启后，子窗口 TaskbarForm 会被销毁或失效。
+                // 必须由主窗口感知并重建 TaskbarForm，才能恢复显示。
+                if (_cfg.ShowTaskbar)
+                {
+                    // 延迟执行，确保 Explorer 初始化基本完成，同时避免阻塞消息泵
+                    this.BeginInvoke(new Action(async () =>
+                    {
+                        try 
+                        {
+                            await Task.Delay(1000); // 等待1秒让Explorer缓口气
+                            ToggleTaskbar(false);   // 彻底销毁旧实例
+                            ToggleTaskbar(true);    // 创建新实例(新实例自带重试机制)
+                        }
+                        catch { }
+                    }));
+                }
+            }
+            base.WndProc(ref m);
         }
 
         protected override void OnPaint(PaintEventArgs e)

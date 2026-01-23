@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Security;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -46,7 +49,14 @@ namespace LiteMonitor.src.Plugins
             lock (_httpLock)
             {
                 _http?.Dispose();
-                _http = new HttpClient();
+                _http = new HttpClient(new SocketsHttpHandler
+                {
+                    SslOptions = new SslClientAuthenticationOptions
+                    {
+                        RemoteCertificateValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+                    },
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+                });
                 _http.Timeout = TimeSpan.FromSeconds(10); 
                 _http.DefaultRequestHeaders.Add("User-Agent", "LiteMonitor/1.0");
             }
@@ -342,9 +352,13 @@ namespace LiteMonitor.src.Plugins
 
             return _proxyClients.GetOrAdd(proxy, p => 
             {
-                var handler = new HttpClientHandler();
+                var handler = new SocketsHttpHandler();
                 handler.Proxy = new System.Net.WebProxy(p);
                 handler.UseProxy = true;
+                handler.SslOptions = new SslClientAuthenticationOptions
+                {
+                    RemoteCertificateValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+                };
                 
                 var client = new HttpClient(handler);
                 client.Timeout = TimeSpan.FromSeconds(10);
@@ -355,8 +369,13 @@ namespace LiteMonitor.src.Plugins
 
         private async Task<string> FetchRawAsync(string methodStr, string url, string body, Dictionary<string, string> headers, string encoding, System.Threading.CancellationToken token, string proxy = null)
         {
-            var method = (methodStr?.ToUpper() == "POST") ? HttpMethod.Post : HttpMethod.Get;
-            var request = new HttpRequestMessage(method, url);
+            HttpMethod method = HttpMethod.Get;
+            if (methodStr?.ToUpper() == "POST") method = HttpMethod.Post;
+            else if (methodStr?.ToUpper() == "HEAD") method = HttpMethod.Head;
+            
+            // Log($"[Start] {method} {url} Proxy:{proxy ?? "None"}");
+
+            using var request = new HttpRequestMessage(method, url);
             if (method == HttpMethod.Post && !string.IsNullOrEmpty(body))
             {
                 request.Content = new StringContent(body, Encoding.UTF8, "application/json");
@@ -367,17 +386,31 @@ namespace LiteMonitor.src.Plugins
             }
 
             var client = GetClient(proxy);
-            var response = await client.SendAsync(request, token);
-            // [Fix] Enforce success status code to prevent caching error pages (e.g. 404/500 HTML)
-            response.EnsureSuccessStatusCode();
-            
-            byte[] bytes = await response.Content.ReadAsByteArrayAsync(token);
-            
-            if (encoding?.ToLower() == "gbk")
+            try
             {
-                return Encoding.GetEncoding("GBK").GetString(bytes);
+                var response = await client.SendAsync(request, token);
+                // Log($"[End] {url} Status:{response.StatusCode}");
+
+                // [Fix] Enforce success status code to prevent caching error pages (e.g. 404/500 HTML)
+                response.EnsureSuccessStatusCode();
+                
+                // [Optimization] HEAD request optimization
+                if (method == HttpMethod.Head) return "";
+
+                byte[] bytes = await response.Content.ReadAsByteArrayAsync(token);
+                
+                if (encoding?.ToLower() == "gbk")
+                {
+                    return Encoding.GetEncoding("GBK").GetString(bytes);
+                }
+                return Encoding.UTF8.GetString(bytes);
             }
-            return Encoding.UTF8.GetString(bytes);
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Error] {url} {ex.Message}");
+                // Log($"[Error] {url} {ex.Message}");
+                throw;
+            }
         }
 
         private void ParseAndExtract(string resultRaw, Dictionary<string, string> extractRules, Dictionary<string, string> context, string format = "json")
@@ -509,6 +542,9 @@ namespace LiteMonitor.src.Plugins
                  // Heuristic: Just recreate default client. It's cheap enough (once per 5s on error).
                  InitializeDefaultClient();
             }
+
+            // [Improvement] Only show ERROR status after 3 consecutive failures to avoid flickering on transient network issues?
+            // For now, we still show error immediately, but we might want to log it less verbosely.
 
             if (tmpl.Outputs != null)
             {

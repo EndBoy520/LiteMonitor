@@ -30,7 +30,7 @@
     "steps": [
       {
         "id": "ping",
-        "url": "{{target_url ?? 'http://connect.rom.miui.com/generate_204'}}",
+        "url": "{{target_url ?? 'http://wifi.vivo.com.cn/generate_204'}}",
         "proxy": "{{proxy_server}}",
         "cache_minutes": 0,
         "process": [

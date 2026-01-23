@@ -137,11 +137,24 @@ namespace LiteMonitor.src.UI.Helpers
         // =================================================================
         // Win32 API
         // =================================================================
+        public static int RegisterTaskbarCreatedMessage()
+        {
+            int msgId = RegisterWindowMessage("TaskbarCreated");
+            if (msgId != 0)
+            {
+                ChangeWindowMessageFilter((uint)msgId, MSGFLT_ADD);
+            }
+            return msgId;
+        }
+
         [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
         [DllImport("user32.dll", SetLastError = true)] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll", SetLastError = true)] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] public static extern int RegisterWindowMessage(string lpString);
+        [DllImport("user32.dll", SetLastError = true)] public static extern bool ChangeWindowMessageFilter(uint message, uint dwFlag);
 
+        public const uint MSGFLT_ADD = 1;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWCP_ROUND = 2;
         private const int DWMWA_BORDER_COLOR = 34;
