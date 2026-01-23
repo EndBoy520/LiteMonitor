@@ -45,8 +45,21 @@ namespace LiteMonitor.src.WebServer
             try
             {
                 int port = _cfg.WebServerPort;
-                _listener = new TcpListener(IPAddress.Any, port);
-                _listener.Start();
+
+                try
+                {
+                    // [Fix] 优先尝试绑定 IPv6Any 并开启 DualMode，以同时支持 IPv4 和 IPv6
+                    _listener = new TcpListener(IPAddress.IPv6Any, port);
+                    _listener.Server.DualMode = true;
+                    _listener.Start();
+                }
+                catch (Exception)
+                {
+                    // 如果系统不支持 IPv6，回退到 IPv4
+                    _listener = new TcpListener(IPAddress.Any, port);
+                    _listener.Start();
+                }
+
                 _isRunning = true;
                 _currentRunningPort = port;
 
