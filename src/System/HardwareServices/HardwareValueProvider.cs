@@ -319,7 +319,7 @@ namespace LiteMonitor.src.SystemServices
                     case "BAT.Power":
                     case "BAT.Voltage":
                     case "BAT.Current":
-                        bool _simulateBattery = false;
+                        bool _simulateBattery = true;
                         if (_simulateBattery) // 确保你有这个变量，或者直接写 true
                         {
                             var now = DateTime.Now;

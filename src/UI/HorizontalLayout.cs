@@ -236,31 +236,35 @@ namespace LiteMonitor
             var type = MetricUtils.GetType(item.Key);
             string val = type switch
             {
-                MetricType.Frequency => "9.9",
-                MetricType.Voltage => "1.25",
-                MetricType.RPM => "9999",
-                MetricType.Memory when _settings.MemoryDisplayMode == 1 => "99.9",
-                MetricType.DataSpeed => "9.9",
-                _ => "999" // 覆盖 Power, Percent(100), Temp(100), DataSize(999), FPS(999)
+                MetricType.Frequency => "9.9",// GHz
+                MetricType.Voltage => "1.25",// V
+                MetricType.RPM => "9999",// RPM
+                MetricType.Memory when _settings.MemoryDisplayMode == 1 => "99.9",// GB
+                MetricType.DataSpeed => "9.9",// MB/s   
+                _ => "999" // 覆盖 Power, Percent(100), Temp(100), DataSize(999), FPS(999) 等
             };
+
+            // [Fix] 横屏模式(Panel)与任务栏模式(Taskbar)均属于水平布局，
+            // 且 HorizontalRenderer 渲染时使用了 GetFormattedText(true) 即 UnitTaskbar 配置，
+            // 因此测量时必须统一使用 Horizontal/Taskbar 的逻辑（紧凑单位、去除 /s 等）。
+            bool isHorizontal = _mode == LayoutMode.Taskbar || _mode == LayoutMode.Horizontal;
 
             // 3. 确定基础单位 (用于占位或替换 {u})
             // 使用重构后的 GetDefaultUnit，根据模式自动获取正确的单位（包含空格）
             string rawUnit = type switch
             {
                 MetricType.DataSpeed or MetricType.DataSize => "MB",
-                _ => MetricUtils.GetDefaultUnit(item.Key, _mode == LayoutMode.Taskbar ? MetricUtils.UnitContext.Taskbar : MetricUtils.UnitContext.Panel)
+                _ => MetricUtils.GetDefaultUnit(item.Key, isHorizontal ? MetricUtils.UnitContext.Taskbar : MetricUtils.UnitContext.Panel)
                                 .Replace("{u}", "") // 移除占位符
             };
 
             // 4. 获取最终显示单位 (处理自定义格式和 Auto 模式)
-            bool isTaskbar = _mode == LayoutMode.Taskbar;
-            string userFmt = isTaskbar ? item.BoundConfig?.UnitTaskbar : item.BoundConfig?.UnitPanel;
+            string userFmt = isHorizontal ? item.BoundConfig?.UnitTaskbar : item.BoundConfig?.UnitPanel;
             string unit = MetricUtils.GetDisplayUnit(item.Key, rawUnit, userFmt);
 
-            // [Fix] 任务栏模式下，GetDisplayUnit 可能会强制加上 /s (针对 DataSpeed)，
-            // 但任务栏通常空间紧凑，不显示 /s，这里需要修正以避免列宽过宽。
-            if (isTaskbar && type == MetricType.DataSpeed && unit.EndsWith("/s"))
+            // [Fix] 任务栏/横屏模式下，GetDisplayUnit 可能会强制加上 /s (针对 DataSpeed)，
+            // 但通常空间紧凑，不显示 /s，这里需要修正以避免列宽过宽。
+            if (isHorizontal && type == MetricType.DataSpeed && unit.EndsWith("/s"))
             {
                 unit = unit.Substring(0, unit.Length - 2);
             }
