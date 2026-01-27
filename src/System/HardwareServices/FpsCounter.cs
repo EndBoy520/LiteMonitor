@@ -58,6 +58,15 @@ namespace LiteMonitor.src.SystemServices
         // 最终算出来的各进程稳定 FPS
         private readonly ConcurrentDictionary<int, float> _calculatedProcessFps = new();
         
+        // ★★★ [新增] 进程名缓存，减少 GetProcessById 的 CPU 消耗 ★★★
+        private readonly ConcurrentDictionary<int, string> _processNameCache = new();
+
+        // ★★★ [新增] 排除进程列表，减少字符串比较开销 ★★★
+        private static readonly HashSet<string> ExcludedProcesses = new(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "LiteMonitor", "LiteMonitorFPS", "PresentMon", "Unknown" 
+        };
+        
         // 锁定机制变量，用于实现粘性锁定逻辑
         private int _currentFocusPid = 0;       // 当前聚焦的进程 PID
         private int _pendingPid = 0;            // 待切换的进程 PID
@@ -157,10 +166,19 @@ namespace LiteMonitor.src.SystemServices
                 return 0f;
             }
 
-            // 粘性锁定逻辑：找出全场 FPS 最高的进程
-            var challenger = _calculatedProcessFps.OrderByDescending(x => x.Value).First();
-            int challengerPid = challenger.Key;
-            float challengerFps = challenger.Value;
+            // 粘性锁定逻辑：找出全场 FPS 最高的进程（优化版，避免 OrderBy 全量排序）
+            int challengerPid = 0;
+            float challengerFps = -1f;
+            foreach (var pair in _calculatedProcessFps)
+            {
+                if (pair.Value > challengerFps)
+                {
+                    challengerFps = pair.Value;
+                    challengerPid = pair.Key;
+                }
+            }
+
+            if (challengerPid == 0) return 0f;
 
             // 焦点进程仲裁逻辑
             if (_currentFocusPid == 0 || !_calculatedProcessFps.ContainsKey(_currentFocusPid))
@@ -231,8 +249,7 @@ namespace LiteMonitor.src.SystemServices
         /// <returns>是 DWM 进程返回 true，否则返回 false</returns>
         private bool IsDwm(int pid)
         {
-            try { return Process.GetProcessById(pid).ProcessName.Equals("dwm", StringComparison.OrdinalIgnoreCase); }
-            catch { return false; }
+            return GetProcessName(pid).Equals("dwm", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -366,14 +383,23 @@ namespace LiteMonitor.src.SystemServices
             try
             {
                 // 跳过表头行
-                if (line.StartsWith("Application")) return;
-                // 按逗号分割数据
-                var parts = line.Split(',');
-                if (parts.Length < 2) return;
-                // 解析 PID 并累加帧数
-                if (int.TryParse(parts[1], out int pid))
+                if (line.Length == 0 || line[0] == 'A') return; // 快速检查 "Application"
+
+                // 优化解析：手动查找第一个和第二个逗号，避免 Split(',') 产生大量字符串碎片的 GC 压力
+                int firstComma = line.IndexOf(',');
+                if (firstComma == -1) return;
+
+                int secondComma = line.IndexOf(',', firstComma + 1);
+                int length = (secondComma == -1) ? line.Length - firstComma - 1 : secondComma - firstComma - 1;
+
+                if (length > 0)
                 {
-                    _processFrameCounts.AddOrUpdate(pid, 1, (k, v) => v + 1);
+                    // 使用 ReadOnlySpan 避免 Substring 内存分配
+                    ReadOnlySpan<char> pidSpan = line.AsMemory(firstComma + 1, length).Span;
+                    if (int.TryParse(pidSpan, out int pid))
+                    {
+                        _processFrameCounts.AddOrUpdate(pid, 1, (k, v) => v + 1);
+                    }
                 }
             }
             catch { }
@@ -409,7 +435,7 @@ namespace LiteMonitor.src.SystemServices
 
                 // 获取进程名称，过滤不需要监控的进程
                 string pName = GetProcessName(pid);
-                if (pName == "LiteMonitor" || pName == "LiteMonitorFPS" || pName == "PresentMon" || pName == "Unknown")
+                if (ExcludedProcesses.Contains(pName))
                 {
                     _calculatedProcessFps.TryRemove(pid, out _);
                     continue;
@@ -446,20 +472,29 @@ namespace LiteMonitor.src.SystemServices
                 olyHistory.Enqueue(rawStableFps);
                 while (olyHistory.Count > OLYMPIC_SIZE) olyHistory.Dequeue();
 
-                // 计算最终平滑的 FPS：去头去尾取平均
+                // 计算最终平滑的 FPS：去头去尾取平均（奥运会算法优化版）
                 float finalFps = 0;
-                if (olyHistory.Count >= 4)
+                int count = olyHistory.Count;
+                if (count >= 4)
                 {
-                    var sortedList = olyHistory.OrderBy(x => x).ToList();
+                    float min = float.MaxValue;
+                    float max = float.MinValue;
                     float sum = 0;
-                    // 去掉最高值和最低值，计算剩余值的平均值
-                    for (int i = 1; i < sortedList.Count - 1; i++) sum += sortedList[i];
-                    finalFps = sum / (sortedList.Count - 2);
+                    foreach (var f in olyHistory)
+                    {
+                        if (f < min) min = f;
+                        if (f > max) max = f;
+                        sum += f;
+                    }
+                    // 去掉一个最高值和一个最低值，计算剩余值的平均值
+                    finalFps = (sum - min - max) / (count - 2);
                 }
                 else
                 {
                     // 数据不足时直接取平均
-                    finalFps = olyHistory.Average();
+                    float sum = 0;
+                    foreach (var f in olyHistory) sum += f;
+                    finalFps = sum / count;
                 }
 
                 // 结果存储与清理
@@ -467,6 +502,7 @@ namespace LiteMonitor.src.SystemServices
                 {
                     // FPS 过低，移除该进程
                     _calculatedProcessFps.TryRemove(pid, out _);
+                    _processNameCache.TryRemove(pid, out _); // ★★★ 同步清理进程名缓存 ★★★
                     if (currentCount == 0 && totalCount == 0) 
                     {
                         // 完全没有帧数据，清理历史记录
@@ -483,13 +519,21 @@ namespace LiteMonitor.src.SystemServices
         }
 
         /// <summary>
-        /// 获取进程名称
+        /// 获取进程名称（带缓存优化）
         /// </summary>
         /// <param name="pid">进程 PID</param>
         /// <returns>进程名称，失败时返回 "Unknown"</returns>
         private string GetProcessName(int pid)
         {
-            try { return Process.GetProcessById(pid).ProcessName; } catch { return "Unknown"; }
+            if (_processNameCache.TryGetValue(pid, out string? cachedName)) return cachedName;
+
+            try 
+            { 
+                string name = Process.GetProcessById(pid).ProcessName; 
+                _processNameCache.TryAdd(pid, name);
+                return name;
+            } 
+            catch { return "Unknown"; }
         }
 
         /// <summary>
