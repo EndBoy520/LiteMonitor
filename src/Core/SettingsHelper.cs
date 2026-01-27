@@ -68,6 +68,14 @@ namespace LiteMonitor
             // Caller (AppActions.ApplyAllSettings) is responsible for syncing language state.
             // s.SyncToLanguage();
             
+            // [Migration] 兼容老用户：如果未设置 PresetStyle (-1)，根据旧的 FontSize 推断  
+            // 未来1.2.9几个版本后，将TaskbarPresetStyle 默认配置改成1即可
+            if (s.TaskbarPresetStyle == -1)
+            {
+                // 9.0pt => 小字模式(0), 其他 => 大字模式(1)
+                s.TaskbarPresetStyle = (Math.Abs(s.TaskbarFontSize - Settings.DEFAULT_TB_SIZE_REGULAR) < 0.1f) ? 0 : 1;
+            }
+
             s.InternAllStrings();
             
             return s;
@@ -378,14 +386,15 @@ namespace LiteMonitor
                 Gap = settings.TaskbarItemSpacing, Inner = settings.TaskbarInnerSpacing, VOff = settings.TaskbarVerticalPadding
             };
 
-            // 如果未开启自定义布局，使用标准布局参数，但 字体大小/加粗 依然尊重用户设置
-            // 修复：此前逻辑会忽略 TaskbarFontSize，导致“大字/小字模式”切换无效
+            // 如果未开启自定义布局，使用标准布局参数
+            bool isSmall = settings.TaskbarPresetStyle == 0; // 0 = Regular/Small, 1 = Bold/Big
+
             return new Settings.TBStyle {
                 Font = Settings.DEFAULT_TB_FONT, 
-                Size = settings.TaskbarFontSize, // 修复：使用设置值而不是硬编码
-                Bold = settings.TaskbarFontBold,
+                Size = isSmall ? Settings.DEFAULT_TB_SIZE_REGULAR : Settings.DEFAULT_TB_SIZE_BOLD,
+                Bold = !isSmall,
                 Gap = Settings.DEFAULT_TB_GAP, 
-                Inner = settings.TaskbarFontBold ? Settings.DEFAULT_TB_INNER_BOLD : Settings.DEFAULT_TB_INNER_REGULAR, 
+                Inner = isSmall ? Settings.DEFAULT_TB_INNER_REGULAR : Settings.DEFAULT_TB_INNER_BOLD, 
                 VOff = Settings.DEFAULT_TB_VOFF 
             };
         }

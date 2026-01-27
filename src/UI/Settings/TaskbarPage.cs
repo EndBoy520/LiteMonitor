@@ -107,33 +107,9 @@ namespace LiteMonitor.src.UI.SettingsPage
             // Style Combo
             var combo = group.AddComboIndex(this, "Menu.TaskbarStyle",
                 new[] { LanguageManager.T("Menu.TaskbarStyleBold"), LanguageManager.T("Menu.TaskbarStyleRegular") },
-                // ★★★ 修复：复杂的判空逻辑 ★★★
-                () => {
-                    if (Config == null) return 0; // 默认值
-                    return (!Config.TaskbarFontBold && Math.Abs(Config.TaskbarFontSize - Settings.DEFAULT_TB_SIZE_REGULAR) < 0.1f) ? 1 : 0;
-                },
-                idx => {
-                    // ★★★ 修复：移除对 Config.TaskbarCustomLayout 的检查 ★★★
-                    if (Config != null) {
-                        if (idx == 1) { 
-                            // 细字模式 (Regular)
-                            Config.TaskbarFontBold = false; 
-                            Config.TaskbarFontSize = Settings.DEFAULT_TB_SIZE_REGULAR;
-                            // 同时也预设推荐的间距，防止用户开启自定义时错位
-                            Config.TaskbarInnerSpacing = Settings.DEFAULT_TB_INNER_REGULAR;
-                            Config.TaskbarItemSpacing = Settings.DEFAULT_TB_GAP;
-                            Config.TaskbarVerticalPadding = Settings.DEFAULT_TB_VOFF;
-                        }
-                        else { 
-                            // 粗字模式 (Bold)
-                            Config.TaskbarFontBold = true; 
-                            Config.TaskbarFontSize = Settings.DEFAULT_TB_SIZE_BOLD;
-                            Config.TaskbarInnerSpacing = Settings.DEFAULT_TB_INNER_BOLD;
-                            Config.TaskbarItemSpacing = Settings.DEFAULT_TB_GAP;
-                            Config.TaskbarVerticalPadding = Settings.DEFAULT_TB_VOFF;
-                        }
-                    }
-                }
+                // UI: 0=Bold, 1=Regular | Config: 1=Bold, 0=Regular
+                () => (Config?.TaskbarPresetStyle ?? 1) == 1 ? 0 : 1,
+                idx => { if (Config != null) Config.TaskbarPresetStyle = (idx == 0) ? 1 : 0; }
             );
             _styleCombo = combo; 
             _styleCombo.Enabled = !(Config?.TaskbarCustomLayout ?? false);
@@ -197,7 +173,10 @@ namespace LiteMonitor.src.UI.SettingsPage
             _chkCustomLayout = chk;
             chk.CheckedChanged += (s, e) => {
                 foreach(var c in _customLayoutInputs) c.Enabled = chk.Checked;
-                if (_styleCombo != null) _styleCombo.Enabled = !chk.Checked;
+                if (_styleCombo != null) 
+                {
+                    _styleCombo.Enabled = !chk.Checked;
+                }
             };
 
             void AddL(Control ctrl) {

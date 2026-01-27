@@ -48,6 +48,10 @@ namespace LiteMonitor
         public bool HideTrayIcon { get; set; } = false;
         public bool TaskbarAlignLeft { get; set; } = true;
         
+        // ★★★ 任务栏：预设模式选择 (1=Bold/Big, 0=Regular/Small) ★★★
+        // Default = -1 用于检测老用户迁移
+        public int TaskbarPresetStyle { get; set; } = -1;
+
         // ★★★ 任务栏：自定义布局参数 ★★★
         // 开启后，将忽略预设的"粗体/细体"逻辑，强制使用以下参数
         public bool TaskbarCustomLayout { get; set; } = false; 
