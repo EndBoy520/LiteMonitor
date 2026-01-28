@@ -87,7 +87,8 @@ namespace LiteMonitor.src.SystemServices.InfoService
         public void InjectValue(string key, string value)
         {
             if (string.IsNullOrEmpty(key)) return;
-            SetData(key, value);
+            // [Optimization] Intern keys and values from external injections
+            SetData(UIUtils.Intern(key), value);
         }
 
         /// <summary>
@@ -190,8 +191,12 @@ namespace LiteMonitor.src.SystemServices.InfoService
 
         private void UpdateData()
         {
-            // Host info is local and fast
-            SetData(KEY_HOST, Environment.MachineName);
+            // [Optimization] Host info is static, only set once or if changed
+            string currentHost = Environment.MachineName;
+            if (GetValue(KEY_HOST) != currentHost)
+            {
+                SetData(KEY_HOST, currentHost);
+            }
 
             // IP info is potentially slow, run async
             Task.Run(UpdateIPInfo);
@@ -207,7 +212,11 @@ namespace LiteMonitor.src.SystemServices.InfoService
                 // Validate IP
                 if (!string.IsNullOrEmpty(ip) && ip != DEFAULT_IP)
                 {
-                    SetData(KEY_IP, ip);
+                    // [Optimization] Only update if changed
+                    if (GetValue(KEY_IP) != ip)
+                    {
+                        SetData(KEY_IP, ip);
+                    }
                     _currentInterval = INTERVAL_SLOW; // Success -> Relax
                 }
                 else
@@ -226,7 +235,16 @@ namespace LiteMonitor.src.SystemServices.InfoService
         {
             lock (_lock)
             {
-                _data[key] = value;
+                // [Optimization] Intern values to reduce duplicates (e.g. "KB/s", "luffy-pc")
+                // [Fix] Do NOT intern dynamic time strings (Time, Uptime) as they change constantly and pollute the pool
+                if (key == KEY_TIME || key == KEY_UPTIME)
+                {
+                    _data[key] = value;
+                }
+                else
+                {
+                    _data[key] = UIUtils.Intern(value);
+                }
             }
         }
     }

@@ -120,7 +120,8 @@ namespace LiteMonitor.src.UI.Helpers
                         string full = conf.DisplayLabel;
                         if (string.IsNullOrEmpty(full))
                         {
-                             full = LanguageManager.T("Items." + conf.Key);
+                             // [Optimization] Intern the key to prevent duplicates
+                             full = LanguageManager.T(UIUtils.Intern("Items." + conf.Key));
                              if (full.StartsWith("Items.")) full = conf.Key;
                         }
                         CheckAndRemind(full);

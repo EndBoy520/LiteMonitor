@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using LiteMonitor.src.Core; // Added for UIUtils
 using LiteMonitor.src.SystemServices.InfoService;
 
 namespace LiteMonitor.src.Plugins.Native
@@ -124,7 +125,30 @@ namespace LiteMonitor.src.Plugins.Native
                     // 设置超时
                     client.Timeout = TimeSpan.FromSeconds(10);
                     var json = await client.GetStringAsync(JSON_DB_URL);
-                    _db = JsonSerializer.Deserialize<Dictionary<string, List<List<string>>>>(json);
+                    var rawDb = JsonSerializer.Deserialize<Dictionary<string, List<List<string>>>>(json);
+
+                    // [Optimization] Intern strings in the DB to reduce memory usage
+                    // Many cities share the same province name, and many districts share the same city name
+                    _db = new Dictionary<string, List<List<string>>>(rawDb.Count);
+                    
+                    foreach (var kvp in rawDb)
+                    {
+                        // Key (district name) can also be interned
+                        string key = UIUtils.Intern(kvp.Key);
+                        var lists = new List<List<string>>(kvp.Value.Count);
+
+                        foreach (var item in kvp.Value)
+                        {
+                            // item: [code, name, province]
+                            var newItem = new List<string>(item.Count);
+                            foreach (var str in item)
+                            {
+                                newItem.Add(UIUtils.Intern(str));
+                            }
+                            lists.Add(newItem);
+                        }
+                        _db[key] = lists;
+                    }
                 }
             }
             catch (Exception ex)

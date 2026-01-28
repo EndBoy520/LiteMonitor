@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Drawing;
 using System.Text.Json.Serialization;
 using LiteMonitor.src.Core;
+using LiteMonitor.src.Plugins;
 namespace LiteMonitor
 {
     public class Settings
@@ -187,12 +189,53 @@ namespace LiteMonitor
     public class MonitorItemConfig
     {
         // ★★★ 核心优化：使用字符串驻留池解决内存浪费 ★★★
-       private string _key = "";
+        private string _key = "";
+        
+        // [Optimization] Cache keys to avoid string concatenation in hot paths
+        [JsonIgnore] public string CachedPropLabelKey { get; private set; } = "";
+        [JsonIgnore] public string CachedPropShortLabelKey { get; private set; } = "";
+        [JsonIgnore] public string CachedUIGroup { get; private set; } = "";
+        [JsonIgnore] public string CachedItemsKey { get; private set; } = ""; // Items.Key
+        [JsonIgnore] public string CachedGroupsKey { get; private set; } = ""; // Groups.UIGroup
+        [JsonIgnore] public string CachedDashColorKey { get; private set; } = "";
+        [JsonIgnore] public string CachedDashUnitKey { get; private set; } = "";
+
         public string Key 
         { 
             get => _key; 
             // ★★★ 修改：使用可回收的 UIUtils.Intern ★★★
-            set => _key = UIUtils.Intern(value ?? "");   // 新代码
+            set 
+            {
+                _key = UIUtils.Intern(value ?? "");
+                CachedPropLabelKey = UIUtils.Intern("PROP.Label." + _key);
+                CachedPropShortLabelKey = UIUtils.Intern("PROP.ShortLabel." + _key);
+                CachedItemsKey = UIUtils.Intern("Items." + _key);
+
+                // Pre-calculate UIGroup
+                if (_key == "MEM.Load" || 
+                    _key == "MOBO.Temp" || 
+                    _key == "DISK.Temp" || 
+                    _key == "CASE.Fan"|| 
+                    _key == "FPS") 
+                { 
+                    CachedUIGroup = "HOST"; 
+                } 
+                else if (_key.StartsWith("DASH."))
+                {
+                    CachedUIGroup = "DASH";
+                    // DASH specific keys
+                    var dashKey = _key.Substring(5);
+                    CachedDashColorKey = UIUtils.Intern(dashKey + ".Color");
+                    CachedDashUnitKey = UIUtils.Intern(dashKey + ".Unit");
+                }
+                else
+                {
+                    // [Optimization] Intern the group name to avoid duplicates (e.g. 10 items sharing "DATA")
+                    CachedUIGroup = UIUtils.Intern(_key.Split('.')[0]); 
+                }
+                
+                CachedGroupsKey = UIUtils.Intern("Groups." + CachedUIGroup);
+            }
         }
         // ★★★ [优化] 分离用户配置与系统动态值 ★★★
         // UserLabel: 用户手动设置的名称 (持久化)。为空表示跟随系统。
@@ -233,24 +276,25 @@ namespace LiteMonitor
         {
             get 
             {
-                // 定义哪些 Key 属于 HOST 组 
-                 if (Key == "MEM.Load" || 
-                     Key == "MOBO.Temp" || 
-                     Key == "DISK.Temp" || 
-                     Key == "CASE.Fan"|| 
-                     Key == "FPS") 
-                 { 
-                     return "HOST"; 
-                 } 
-                 
-                 // 特殊处理 DASH 组：所有以 DASH. 开头的 Key 都属于 DASH 组
-                 if (Key.StartsWith("DASH."))
-                 {
-                     return "DASH";
-                 }
+                // [Optimization] Return cached value if available
+                if (!string.IsNullOrEmpty(CachedUIGroup)) return CachedUIGroup;
 
-                 // 默认逻辑：取前缀 (例如 CPU.Load -> CPU) 
-                 return Key.Split('.')[0]; 
+                // Fallback for uninitialized state (should be rare)
+                if (Key == "MEM.Load" || 
+                    Key == "MOBO.Temp" || 
+                    Key == "DISK.Temp" || 
+                    Key == "CASE.Fan"|| 
+                    Key == "FPS") 
+                { 
+                    return "HOST"; 
+                } 
+                
+                if (Key.StartsWith("DASH."))
+                {
+                    return "DASH";
+                }
+
+                return Key.Split('.')[0]; 
             }
         }
     }
@@ -285,5 +329,10 @@ namespace LiteMonitor
         // 目标列表 (Scope="target")
         // 每个元素是一个 Dictionary，存储该目标的所有 target 参数
         public List<Dictionary<string, string>> Targets { get; set; } = new List<Dictionary<string, string>>();
+
+        // [Optimization] Runtime key cache to avoid redundant string generation in PluginExecutor
+        // Map: TargetIndex_OutputKey -> KeysBundle
+        [JsonIgnore] 
+        public ConcurrentDictionary<string, PluginOutputKeys> KeyCache { get; } = new ConcurrentDictionary<string, PluginOutputKeys>();
     }
 }

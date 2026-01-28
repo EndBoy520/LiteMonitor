@@ -29,6 +29,9 @@ namespace LiteMonitor.src.Core
         // 1. 全局状态
         // =========================================================
         public static bool IsBatteryCharging = false;
+        
+        // [Optimization] Cache data size units
+        private static readonly string[] _dataSizes = { "KB", "MB", "GB", "TB", "PB" };
 
         public const int STATE_SAFE = 0;
         public const int STATE_WARN = 1;
@@ -233,8 +236,8 @@ namespace LiteMonitor.src.Core
         /// </summary>
         public static (string val, string unit) FormatDataSizeParts(double bytes, int decimals = -1)
         {
-            // 单位列表，从 KB 开始，后续依次乘以 1024 得到 MB、GB、TB、PB
-            string[] sizes = { "KB", "MB", "GB", "TB", "PB" };
+            // [Optimization] Use cached array
+            // string[] sizes = { "KB", "MB", "GB", "TB", "PB" };
 
             // 将字节转换为 KB 作为基准
             double len = bytes / 1024.0;
@@ -242,14 +245,14 @@ namespace LiteMonitor.src.Core
             // 逐级放大单位，直到数值小于 1000 或到达最大单位
             // [Optimize] 使用 1000 而不是 1024 作为阈值，避免出现 "1023 KB" 这种较长的字符串，提前转换为 "0.99 MB"
             int order = 0;
-            while (len >= 1000 && order < sizes.Length - 1)
+            while (len >= 1000 && order < _dataSizes.Length - 1)
             {
                 order++;
                 len /= 1024.0;
             }
 
             // 返回格式化后的数值与对应单位
-            return (FormatValueAdaptive(len, decimals), sizes[order]);
+            return (FormatValueAdaptive(len, decimals), _dataSizes[order]);
         }
 
         public static string FormatDataSize(double bytes, string suffix = "", int decimals = -1)

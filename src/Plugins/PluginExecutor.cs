@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using LiteMonitor;
 using LiteMonitor.src.SystemServices.InfoService;
 using LiteMonitor.src.Plugins.Native;
+using LiteMonitor.src.Core;
 
 namespace LiteMonitor.src.Plugins
 {
@@ -519,31 +520,53 @@ namespace LiteMonitor.src.Plugins
 
         private void ProcessOutputs(PluginInstanceConfig inst, PluginTemplate tmpl, Dictionary<string, string> inputs, string keySuffix)
         {
-            // Removed lock(settings) since we don't modify Settings directly anymore
+            // [Optimization] Use Unified KeyCache from PluginInstanceConfig
+            // Cache Key format: "{keySuffix}.{outputKey}" (e.g. ".0.main" or ".main")
+            
             foreach (var output in tmpl.Outputs)
             {
-                string injectKey = inst.Id + keySuffix + "." + output.Key;
+                string cacheKey = keySuffix + "." + output.Key;
                 
+                var keys = inst.KeyCache.GetOrAdd(cacheKey, _ => 
+                {
+                    var k = new PluginOutputKeys();
+                    
+                    // 1. InjectKey: "Id.0.Key"
+                    string rawInjectKey = inst.Id + keySuffix + "." + output.Key;
+                    k.InjectKey = UIUtils.Intern(rawInjectKey);
+
+                    // 2. Attribute Keys
+                    k.InjectColorKey = UIUtils.Intern(rawInjectKey + ".Color");
+                    k.InjectUnitKey = UIUtils.Intern(rawInjectKey + ".Unit");
+
+                    // 3. Prop Keys (DASH prefix)
+                    string itemKey = PluginConstants.DASH_PREFIX + rawInjectKey;
+                    k.PropLabelKey = UIUtils.Intern("PROP.Label." + itemKey);
+                    k.PropShortKey = UIUtils.Intern("PROP.ShortLabel." + itemKey);
+                    
+                    return k;
+                });
+
                 // 1. Value Injection
                 string val = PluginProcessor.ResolveTemplate(output.Format, inputs);
                 if (string.IsNullOrEmpty(val)) val = PluginConstants.STATUS_EMPTY;
                 
                 // [Optimization] Check existing value to avoid string churn
-                string currentVal = InfoService.Instance.GetValue(injectKey);
+                string currentVal = InfoService.Instance.GetValue(keys.InjectKey);
                 if (val != currentVal)
                 {
-                    InfoService.Instance.InjectValue(injectKey, val);
+                    InfoService.Instance.InjectValue(keys.InjectKey, val);
                 }
 
                 // 2. Color Injection
                 if (!string.IsNullOrEmpty(output.Color))
                 {
                     string colorState = PluginProcessor.ResolveTemplate(output.Color, inputs);
-                    string currentColor = InfoService.Instance.GetValue(injectKey + ".Color");
+                    string currentColor = InfoService.Instance.GetValue(keys.InjectColorKey);
                     
                     if (colorState != currentColor)
                     {
-                        InfoService.Instance.InjectValue(injectKey + ".Color", colorState);
+                        InfoService.Instance.InjectValue(keys.InjectColorKey, colorState);
                     }
                 }
 
@@ -551,16 +574,15 @@ namespace LiteMonitor.src.Plugins
                 if (!string.IsNullOrEmpty(output.Unit))
                 {
                     string resolvedUnit = PluginProcessor.ResolveTemplate(output.Unit, inputs);
-                    string currentUnit = InfoService.Instance.GetValue(injectKey + ".Unit");
+                    string currentUnit = InfoService.Instance.GetValue(keys.InjectUnitKey);
 
                     if (resolvedUnit != currentUnit)
                     {
-                        InfoService.Instance.InjectValue(injectKey + ".Unit", resolvedUnit);
+                        InfoService.Instance.InjectValue(keys.InjectUnitKey, resolvedUnit);
                     }
                 }
 
                 // 4. Dynamic Label Logic
-                string itemKey = PluginConstants.DASH_PREFIX + injectKey;
                 string labelPattern = !string.IsNullOrEmpty(output.Label) ? output.Label : (tmpl.Meta.Name + " " + output.Key);
                 
                 string newName = PluginProcessor.ResolveTemplate(labelPattern, inputs);
@@ -579,18 +601,15 @@ namespace LiteMonitor.src.Plugins
                     }
                 }
 
-                // [Optimization] Avoid injecting identical labels repeatedly
-                string propLabelKey = "PROP.Label." + itemKey;
-                string propShortKey = "PROP.ShortLabel." + itemKey;
-
-                if (InfoService.Instance.GetValue(propLabelKey) != newName)
+                // [Optimization] Use cached Prop keys
+                if (InfoService.Instance.GetValue(keys.PropLabelKey) != newName)
                 {
-                    InfoService.Instance.InjectValue(propLabelKey, newName);
+                    InfoService.Instance.InjectValue(keys.PropLabelKey, newName);
                 }
 
-                if (InfoService.Instance.GetValue(propShortKey) != newShort)
+                if (InfoService.Instance.GetValue(keys.PropShortKey) != newShort)
                 {
-                    InfoService.Instance.InjectValue(propShortKey, newShort);
+                    InfoService.Instance.InjectValue(keys.PropShortKey, newShort);
                 }
             }
         }
@@ -663,7 +682,7 @@ namespace LiteMonitor.src.Plugins
                                 // Simple cleanup: remove {{...}} parts or keep them, keeping them is better than nothing
                             }
 
-                            InfoService.Instance.InjectValue("PROP.Label." + itemKey, fallback);
+                            InfoService.Instance.InjectValue(UIUtils.Intern("PROP.Label." + itemKey), fallback);
                         }
                         catch {}
                     }

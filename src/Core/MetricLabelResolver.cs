@@ -18,7 +18,11 @@ namespace LiteMonitor.src.Core
             
             // 2. 运行时动态注入 (高优先级)
             // 插件运行过程中会实时向 InfoService 注入 PROP.Label.Key
-            string dynKey = "PROP.Label." + config.Key;
+            // [Optimization] Use cached key if available
+            string dynKey = !string.IsNullOrEmpty(config.CachedPropLabelKey) 
+                ? config.CachedPropLabelKey 
+                : "PROP.Label." + config.Key;
+
             string dynVal = InfoService.Instance.GetValue(dynKey);
             
             // 业务约束：如果动态值为 ERROR 或空，则尝试降级 (避免闪烁或显示错误)
@@ -48,7 +52,10 @@ namespace LiteMonitor.src.Core
                 return config.TaskbarLabel;
 
             // 2. 运行时动态注入
-            string dynKey = "PROP.ShortLabel." + config.Key;
+            string dynKey = !string.IsNullOrEmpty(config.CachedPropShortLabelKey)
+                ? config.CachedPropShortLabelKey
+                : "PROP.ShortLabel." + config.Key;
+            
             string dynVal = InfoService.Instance.GetValue(dynKey);
             if (!string.IsNullOrEmpty(dynVal)) 
                 return dynVal;

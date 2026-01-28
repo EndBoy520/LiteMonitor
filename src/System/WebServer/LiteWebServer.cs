@@ -24,7 +24,7 @@ namespace LiteMonitor.src.WebServer
         private readonly Settings _cfg;
         // 存储所有活跃的 WebSocket 客户端
         private readonly ConcurrentDictionary<TcpClient, bool> _wsClients = new();
-
+        
         public static LiteWebServer? Instance { get; private set; }
 
         public bool IsRunning => _isRunning;
@@ -401,13 +401,17 @@ namespace LiteMonitor.src.WebServer
                 }
                 else
                 {
-                    displayName = LanguageManager.T(UIUtils.Intern("Items." + item.Key));
+                    // [Optimization] Use cached keys from MonitorItemConfig
+                    string itemsKey = !string.IsNullOrEmpty(item.CachedItemsKey) ? item.CachedItemsKey : UIUtils.Intern("Items." + item.Key);
+                    displayName = LanguageManager.T(itemsKey);
                     // 如果翻译失败 (fallback to key suffix)
                     if (displayName.StartsWith("Items.")) displayName = displayName.Split('.')[1];
                 }
                 
                 string groupId = item.UIGroup.ToUpper();
-                string groupDisplay = LanguageManager.T("Groups." + item.UIGroup);
+                // [Optimization] Use cached keys
+                string groupsKey = !string.IsNullOrEmpty(item.CachedGroupsKey) ? item.CachedGroupsKey : UIUtils.Intern("Groups." + item.UIGroup);
+                string groupDisplay = LanguageManager.T(groupsKey);
 
                 string valStr = "";
                 string unit = "";
@@ -422,11 +426,14 @@ namespace LiteMonitor.src.WebServer
                     valStr = InfoService.Instance.GetValue(dashKey);
                     
                     // ★★★ 修复：读取插件写入的颜色状态 (.Color) ★★★
-                    string colorStr = InfoService.Instance.GetValue(dashKey + ".Color");
+                    // [Optimization] Use cached Dash keys
+                    string colorKey = !string.IsNullOrEmpty(item.CachedDashColorKey) ? item.CachedDashColorKey : dashKey + ".Color";
+                    string colorStr = InfoService.Instance.GetValue(colorKey);
                     if (int.TryParse(colorStr, out int cVal)) status = cVal;
 
                     // 读取插件写入的单位 (.Unit)
-                    string unitStr = InfoService.Instance.GetValue(dashKey + ".Unit");
+                    string unitKey = !string.IsNullOrEmpty(item.CachedDashUnitKey) ? item.CachedDashUnitKey : dashKey + ".Unit";
+                    string unitStr = InfoService.Instance.GetValue(unitKey);
                     if (!string.IsNullOrEmpty(unitStr)) unit = unitStr;
                 }
                 else 
@@ -483,7 +490,7 @@ namespace LiteMonitor.src.WebServer
 
             var payload = new {
                 sys = new {
-                    host = Environment.MachineName,
+                    host = InfoService.Instance.GetValue("HOST"),
                     ip = localIp,
                     port = _cfg.WebServerPort,
                     uptime = (DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).ToString(@"dd\.hh\:mm\:ss"),
