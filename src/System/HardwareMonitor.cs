@@ -37,13 +37,12 @@ namespace LiteMonitor.src.SystemServices
         private List<string>? _cachedDiskList = null;    // 硬盘列表缓存
         private List<string>? _cachedMoboTempList = null; // 主板温度列表缓存
 
-        private DateTime _lastTrafficTime = DateTime.Now;
-        private DateTime _lastTrafficSave = DateTime.Now;
-        private DateTime _lastMemoryClean = DateTime.Now; // ★★★ 新增：上次静默清理时间
+        private long _tickCounter = 0; // ★★★ 统一计时器计数 (约 1秒/tick) ★★★
+        private double _secondAccumulator = 0; // ★★★ [新增] 秒级累加器，解决非1秒刷新率问题 ★★★
+        private long _secondsCounter = 0;      // ★★★ [新增] 真实的秒计数器 (不受刷新率影响) ★★★
+        private DateTime _lastTrafficTime = DateTime.Now; // 仅用于网速计算 (需要高精度)
         private DateTime _startTime = DateTime.Now;
-        private DateTime _lastSlowScan = DateTime.Now;
-        private DateTime _lastDiskBgScan = DateTime.Now;
-        
+
         public IComputer ComputerInstance => _computer;// [新增] 允许 UI 层访问原始硬件树（用于硬件信息面板）
 
         // ★★★ 新增：允许主程序手动触发驱动检查 (用于解决启动弹窗冲突) ★★★
@@ -148,10 +147,25 @@ namespace LiteMonitor.src.SystemServices
         {
             try
             {
+                // 1. 统一心跳计数 (假设 UpdateAll 约 1秒调用一次)
+                _tickCounter++;
+
+                // 2. 计算精确时间差 (仅用于网速计算)
                 DateTime now = DateTime.Now;
                 double timeDelta = (now - _lastTrafficTime).TotalSeconds;
                 _lastTrafficTime = now;
-                if (timeDelta > 5.0) timeDelta = 0;
+                if (timeDelta > 5.0) timeDelta = 0; // 防止休眠唤醒后的数据突刺
+
+                // ★★★ [智能处理] 刷新率自适应逻辑 ★★★
+                // 无论 UpdateAll 是 300ms 调一次还是 2s 调一次，
+                // 我们都将时间累加，直到凑满 1秒，才增加 _secondsCounter。
+                // 这样后续的 % 60, % 600 逻辑就是基于"真实时间"，而非"调用次数"。
+                _secondAccumulator += timeDelta;
+                while (_secondAccumulator >= 1.0)
+                {
+                    _secondAccumulator -= 1.0;
+                    _secondsCounter++;
+                }
 
                 // === [优化开始] 精细化判断更新需求 ===
         
@@ -192,8 +206,11 @@ namespace LiteMonitor.src.SystemServices
                 _cfg.IsAnyEnabled("CPU.Pump") || 
                 _cfg.IsAnyEnabled("CASE.Fan");
 
-                bool isSlowScanTick = (now - _lastSlowScan).TotalSeconds > 3;
-                bool needDiskBgScan = (now - _lastDiskBgScan).TotalSeconds > 10;
+                // ★★★ 使用 _secondsCounter (真实秒) 替代 Tick (调用次数) ★★★
+                // 3秒一次 (慢速扫描)
+                bool isSlowScanTick = (_secondsCounter % 3 == 0); 
+                // 10秒一次 (磁盘后台扫描)
+                bool needDiskBgScan = (_secondsCounter % 10 == 0);
 
                 lock (_lock)
                 {
@@ -229,31 +246,31 @@ namespace LiteMonitor.src.SystemServices
                     }
                 }
 
-                if (isSlowScanTick) _lastSlowScan = now;
-                if (needDiskBgScan) _lastDiskBgScan = now;
-
                 _valueProvider.OnUpdateTickStarted();
 
-                if ((now - _lastTrafficSave).TotalSeconds > 60)
+                // ★★★ 任务错峰执行 (Task Staggering) ★★★
+                // 此时使用的是 _secondsCounter (真实秒)，无论刷新率是多少，这里都是精确的 60秒 执行一次
+                
+                // 1. 流量保存: 每 60 秒 (Offset 5s: 避开整点)
+                if (_secondsCounter % 60 == 5)
                 {
                     TrafficLogger.Save();
-                    _lastTrafficSave = now;
                 }
 
-                // ★★★ [新增] 静默内存清理 (每 5 分钟触发一次) ★★★
-                // 解决用户"手动优化太累"的痛点，自动维持低内存占用
-                if ((now - _lastMemoryClean).TotalMinutes > 5)
+                // 2. 内存软清理: 每 60 秒 (Offset 30s: 避开流量保存)
+                if (_secondsCounter % 60 == 30)
                 {
-                    _lastMemoryClean = now;
-                    // 1. 软清理：回收托管堆垃圾 (安全，无副作用)
                     GC.Collect(2, GCCollectionMode.Optimized); 
-                    
-                    // 2. 硬清理：只有当工作集超过 50MB 时才修剪物理内存
-                    // 避免在内存占用本来就很低时频繁产生缺页中断 (Page Faults)
+                }
+
+                // 3. 内存硬清理: 每 300 秒 (5分钟) (Offset 45s)
+                if (_secondsCounter % 300 == 45)
+                {
                     try 
                     {
                         using var proc = System.Diagnostics.Process.GetCurrentProcess();
-                        if (proc.WorkingSet64 > 50 * 1024 * 1024) 
+                        // 阈值降低到 30MB，确保即使占用不高也能保持极致轻量
+                        if (proc.WorkingSet64 > 30 * 1024 * 1024) 
                         {
                             EmptyWorkingSet(proc.Handle);
                         }
