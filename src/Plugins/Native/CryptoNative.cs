@@ -76,49 +76,42 @@ namespace LiteMonitor.src.Plugins.Native
 
         private static string ParseBybitResponse(string jsonStr, string symbol)
         {
-            try
+            using var doc = JsonDocument.Parse(jsonStr);
+            var root = doc.RootElement;
+            
+            if (root.GetProperty("retCode").GetInt32() != 0)
             {
-                using var doc = JsonDocument.Parse(jsonStr);
-                var root = doc.RootElement;
-                
-                if (root.GetProperty("retCode").GetInt32() != 0)
-                {
-                    return JsonSerializer.Serialize(new { error = "Bybit Error", msg = root.GetProperty("retMsg").GetString() });
-                }
-
-                var list = root.GetProperty("result").GetProperty("list");
-                if (list.GetArrayLength() == 0)
-                {
-                    return JsonSerializer.Serialize(new { error = "Symbol Not Found" });
-                }
-
-                var data = list[0];
-
-                // 转换逻辑 (Copy from JS Worker)
-                // price24hPcnt: "0.025" -> 2.5
-                double pcnt = 0;
-                if (double.TryParse(data.GetProperty("price24hPcnt").GetString(), out double p))
-                {
-                    pcnt = Math.Round(p * 100, 2);
-                }
-
-                var responseData = new
-                {
-                    name = data.GetProperty("symbol").GetString(),
-                    price = data.GetProperty("lastPrice").GetString(), // 保持字符串或转double，Worker是parseFloat
-                    change_percent = pcnt,
-                    high = data.GetProperty("highPrice24h").GetString(),
-                    low = data.GetProperty("lowPrice24h").GetString(),
-                    vol = data.GetProperty("turnover24h").GetString(),
-                    source = "Direct"
-                };
-
-                return JsonSerializer.Serialize(responseData);
+                throw new Exception($"Bybit Error: {root.GetProperty("retMsg").GetString()}");
             }
-            catch (Exception ex)
+
+            var list = root.GetProperty("result").GetProperty("list");
+            if (list.GetArrayLength() == 0)
             {
-                return JsonSerializer.Serialize(new { error = "Parse Error", msg = ex.Message });
+                throw new Exception("Symbol Not Found");
             }
+
+            var data = list[0];
+
+            // 转换逻辑 (Copy from JS Worker)
+            // price24hPcnt: "0.025" -> 2.5
+            double pcnt = 0;
+            if (double.TryParse(data.GetProperty("price24hPcnt").GetString(), out double p))
+            {
+                pcnt = Math.Round(p * 100, 2);
+            }
+
+            var responseData = new
+            {
+                name = data.GetProperty("symbol").GetString(),
+                price = data.GetProperty("lastPrice").GetString(), // 保持字符串或转double，Worker是parseFloat
+                change_percent = pcnt,
+                high = data.GetProperty("highPrice24h").GetString(),
+                low = data.GetProperty("lowPrice24h").GetString(),
+                vol = data.GetProperty("turnover24h").GetString(),
+                source = "Direct"
+            };
+
+            return JsonSerializer.Serialize(responseData);
         }
     }
 }

@@ -195,8 +195,22 @@ namespace LiteMonitor.src.SystemServices
         // ===========================================================
         public float? GetValue(string key)
         {
-            lock (_lock)
+            // ★★★ [优化] 使用 TryEnter 避免 UI 线程因后台重载而卡死 ★★★
+            // 如果 10ms 内拿不到锁（说明正在重载硬件），直接返回 null
+            bool lockTaken = false;
+            try
             {
+                Monitor.TryEnter(_lock, 10, ref lockTaken);
+                if (!lockTaken) 
+                {
+                    // ★★★ [Fix] 如果无法获取锁（硬件正在重载），优先返回上一帧的有效值，防止 UI 闪烁 ★★★
+                    // 因为 _lastValidMap 仅在 GetValue 内部（即 UI 线程）写入，
+                    // 而后台线程（UpdateAll/Reload）只读不写或完全不访问它，
+                    // 所以此时读取是安全的（虽然没有锁，但没有并发写入）。
+                    if (_lastValidMap.TryGetValue(key, out float lastVal)) return lastVal;
+                    return null;
+                }
+
                 // ★★★ [新增 3] 优先查缓存，如果本帧算过，直接返回 ★★★
                 if (_tickCache.TryGetValue(key, out float cachedVal)) return cachedVal;
 
@@ -599,6 +613,10 @@ namespace LiteMonitor.src.SystemServices
                 }
 
                 return null;
+            }
+            finally
+            {
+                if (lockTaken) Monitor.Exit(_lock);
             }
         }
 

@@ -173,13 +173,21 @@ namespace LiteMonitor.src.Core.Actions
         // 5. 数据源与监控项 (磁盘/网络源、监控开关)
         // =============================================================
 
-        public static void ApplyMonitorLayout(UIController? ui, MainForm form)
+        public static void ApplyMonitorLayout(UIController? ui, MainForm form, bool rebuildMenus = true)
         {
+            // ★★★ [新增] 动态检查硬件开启需求 (热切换) ★★★
+            // 如果用户开启了风扇/水泵，自动开启 USB 控制器；反之关闭
+            HardwareMonitor.Instance?.RefreshHardwareConfig();
+
             // 重新计算哪些格子要显示 (主界面和任务栏的数据列都会重建)
             ui?.RebuildLayout();
             
             // 因为监控项变了（比如开启了GPU），菜单里的勾选状态也得变
-            form.RebuildMenus(); 
+            // 优化：在右键菜单直接操作时，无需重建菜单，避免冗余
+            if (rebuildMenus)
+            {
+                form.RebuildMenus();
+            }
             
             // 任务栏窗口的内容也取决于监控项配置，必须刷新
             ReloadTaskbarWindows();

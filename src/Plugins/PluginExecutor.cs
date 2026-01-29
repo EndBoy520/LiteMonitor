@@ -411,7 +411,7 @@ namespace LiteMonitor.src.Plugins
                 var q = uri.Query.TrimStart('?');
                 foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
                 {
-                    var kv = part.Split('=');
+                    var kv = part.Split(new[] { '=' }, 2);
                     if (kv.Length == 2) 
                     {
                         args[kv[0]] = System.Net.WebUtility.UrlDecode(kv[1]);

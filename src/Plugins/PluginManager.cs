@@ -62,9 +62,29 @@ namespace LiteMonitor.src.Plugins
                 }
             }
 
-            // 2. 自动同步逻辑 (确保新插件出现在配置中)
+            // 2. 自动同步逻辑 (确保新插件出现在配置中，且已删除的插件被清理)
             var settings = Settings.Load();
             bool changed = false;
+
+            // [新增] 清理失效的插件实例 (Template 不存在的)
+            var instancesToRemove = new List<PluginInstanceConfig>();
+            foreach (var inst in settings.PluginInstances)
+            {
+                if (!_templates.Any(t => t.Id == inst.TemplateId))
+                {
+                    instancesToRemove.Add(inst);
+                }
+            }
+
+            foreach (var inst in instancesToRemove)
+            {
+                settings.PluginInstances.Remove(inst);
+                // 同时清理关联的 MonitorItems
+                PluginMonitorSyncService.Instance.RemoveMonitorItems(inst.Id, saveIfChanged: false);
+                changed = true;
+            }
+
+            // [原有] 添加新插件实例
             foreach (var tmpl in _templates)
             {
                 if (!settings.PluginInstances.Any(x => x.TemplateId == tmpl.Id))
