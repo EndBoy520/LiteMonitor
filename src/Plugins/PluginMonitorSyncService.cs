@@ -74,6 +74,8 @@ namespace LiteMonitor.src.Plugins
                             {
                                 InfoService.Instance.InjectValue(itemKey, PluginConstants.STATUS_LOADING);
                             }
+                            // ★★★ [新增] 顺便注入默认单位，这样 MetricUtils 就能查到了 ★★★
+                            InfoService.Instance.InjectValue(itemKey + ".Unit", output.Unit);
 
                             var item = settings.MonitorItems.FirstOrDefault(x => x.Key == itemKey);
 
@@ -129,10 +131,10 @@ namespace LiteMonitor.src.Plugins
                                 string safeShort = !string.IsNullOrEmpty(finalShort) ? finalShort : output.Key;
 
                                 if (item.DynamicLabel != safeLabel) { item.DynamicLabel = safeLabel; changed = true; }
-                            if (item.DynamicTaskbarLabel != safeShort) { item.DynamicTaskbarLabel = safeShort; changed = true; }
-
-                                if (item.UnitPanel != output.Unit) { item.UnitPanel = output.Unit; changed = true; }
-                                if (item.UnitTaskbar != output.Unit) { item.UnitTaskbar = output.Unit; changed = true; } // [Fix] Sync Unit to Taskbar as well
+                                if (item.DynamicTaskbarLabel != safeShort) { item.DynamicTaskbarLabel = safeShort; changed = true; }
+                                // ★★★ [建议] 注释掉下面这两行，防止重启后强制覆盖用户的设置 ★★★
+                                // if (item.UnitPanel != output.Unit) { item.UnitPanel = output.Unit; changed = true; }
+                                // if (item.UnitTaskbar != output.Unit) { item.UnitTaskbar = output.Unit; changed = true; } // [Fix] Sync Unit to Taskbar as well
                             }
                         }
                     }

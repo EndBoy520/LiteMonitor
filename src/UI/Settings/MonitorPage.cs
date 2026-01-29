@@ -213,12 +213,26 @@ namespace LiteMonitor.src.UI.SettingsPage
             {
                 sb.Append('|');
                 sb.Append(item.Key);
-                // 必须包含动态属性，因为 JsonIgnore 导致它们不参与序列化比较
-                // 且 OnShow 中的手动同步逻辑会被 Signature 检查跳过
+                // 动态属性
                 sb.Append(':');
                 sb.Append(item.DynamicLabel ?? ""); 
                 sb.Append(':');
                 sb.Append(item.DynamicTaskbarLabel ?? "");
+                
+                // ★★★ 新增：必须包含用户可编辑的属性，否则修改后切回 Tab 不会刷新 ★★★
+                sb.Append(':');
+                sb.Append(item.UserLabel ?? "");      // 名称
+                sb.Append(':');
+                sb.Append(item.TaskbarLabel ?? "");   // 简称
+                sb.Append(':');
+                sb.Append(item.UnitPanel ?? "null");  // 主面板单位 (null表示默认)
+                sb.Append(':');
+                sb.Append(item.UnitTaskbar ?? "null");// 任务栏单位
+                sb.Append(':');
+                sb.Append(item.VisibleInPanel ? "1" : "0"); // 可见性也建议加上
+                sb.Append(':');
+                sb.Append(item.VisibleInTaskbar ? "1" : "0");
+
             }
             return sb.ToString();
         }

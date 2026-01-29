@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using LiteMonitor.src.SystemServices.InfoService;
 
 namespace LiteMonitor.src.Core
 {
@@ -159,6 +160,7 @@ namespace LiteMonitor.src.Core
             // 1. 内存 (GB vs %)
             if (type == MetricType.Memory) 
                 return Settings.Load().MemoryDisplayMode == 1 ? "GB" : "%";
+            
 
             // 2. 数据 (动态单位)
             if (type == MetricType.DataSpeed || type == MetricType.DataSize)
@@ -178,6 +180,13 @@ namespace LiteMonitor.src.Core
                     return context == UnitContext.Taskbar ? u : u + "/s";
                 
                 return u;
+            }
+            // ★★★ [2] 新增：如果是插件项，去 InfoService 查默认单位 ★★★
+            if (key.StartsWith("DASH.", StringComparison.OrdinalIgnoreCase))
+            {
+                 // 尝试获取刚才 SyncService 注入的单位
+                 string u = InfoService.Instance.GetValue(key + ".Unit");
+                 if (!string.IsNullOrEmpty(u)) return u;
             }
 
             // 3. 电池充电后缀
@@ -221,7 +230,7 @@ namespace LiteMonitor.src.Core
 
         public static string GetDisplayUnit(string key, string calculatedUnit, string userFormat)
         {
-            if (string.IsNullOrEmpty(userFormat) || userFormat.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+           if (string.IsNullOrEmpty(userFormat))
             {
                 if (string.IsNullOrEmpty(userFormat) && userFormat != null) return ""; // Empty = Hide
                 // [Optimization] GetUnitStr already returns the correct unit (e.g., "MB" or "MB/s") based on context.

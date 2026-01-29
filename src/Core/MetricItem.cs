@@ -124,13 +124,25 @@ namespace LiteMonitor
             }
             
             string userFormat = isHorizontal ? cfg?.UnitTaskbar : cfg?.UnitPanel;
-            HasCustomUnit = !string.IsNullOrEmpty(userFormat) && userFormat != "Auto";
+            HasCustomUnit = !string.IsNullOrEmpty(userFormat);
 
             // 3. Return TextValue (Plugin/Dashboard items)
-            if (TextValue != null) 
+           if (TextValue != null) 
             {
-                if (HasCustomUnit && !TextValue.EndsWith(userFormat))
-                    return TextValue + userFormat;
+                // [Optimization] 统一使用 MetricUtils 处理单位逻辑
+                // 1. 获取默认单位 (自动处理：插件查InfoService，硬件查表)
+                var ctx = isHorizontal ? MetricUtils.UnitContext.Taskbar : MetricUtils.UnitContext.Panel;
+                string defUnit = MetricUtils.GetUnitStr(Key, null, ctx);
+
+                // 2. 确定最终单位 (自动处理：用户设为Null时用默认，否则用自定义)
+                string finalUnit = MetricUtils.GetDisplayUnit(Key, defUnit, userFormat);
+
+                // 3. 智能拼接：如果文本里还没包含这个单位，就拼上去
+                if (!string.IsNullOrEmpty(finalUnit) && !TextValue.EndsWith(finalUnit))
+                {
+                    return TextValue + finalUnit;
+                }
+
                 return TextValue;
             }
 
@@ -167,7 +179,7 @@ namespace LiteMonitor
                     string unitCompact = MetricUtils.GetUnitStr(Key, DisplayValue, MetricUtils.UnitContext.Taskbar);
                     
                     // 确保单位正确注入 (虽然 Auto 模式下 GetDisplayUnit 通常直接返回 unitCompact)
-                    string finalUnitCompact = MetricUtils.GetDisplayUnit(Key, unitCompact, "Auto");
+                    string finalUnitCompact = MetricUtils.GetDisplayUnit(Key, unitCompact, null);
                     
                     _cachedHorizontalText = valCompact + finalUnitCompact;
                 }

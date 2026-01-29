@@ -248,26 +248,23 @@ namespace LiteMonitor
 
         private string GenerateSampleText(MetricItem item)
         {
-            // 1. 获取基础数值文本与默认单位
-            // [Optimization] 优先使用缓存的 TextValue，避免重复计算
+            // 1. 优先获取 TextValue
             string val = item.TextValue ?? "";
-            string rawUnit = "";
+            
+            // ★★★ 优化：直接调用 GetUnitStr 获取默认单位 ★★★
+            // 无论是硬件(°C) 还是 插件(从InfoService查)，这里都能统一拿到了
+            string rawUnit = MetricUtils.GetUnitStr(item.Key, 0, MetricUtils.UnitContext.Taskbar);
 
-            // 如果没有 TextValue 且不是插件项，则使用硬件估算逻辑
+            // 2. 硬件监控项的特殊处理（如果没有 TextValue 且不是插件项，则使用硬件估算逻辑）
             if (string.IsNullOrEmpty(val) && !item.Key.StartsWith("DASH.", StringComparison.OrdinalIgnoreCase))
             {
-                // [Hardware] 硬件监控项：计算估算值
                 val = MetricUtils.GetSampleValueStr(item.Key);
 
-                // [Refactor] 确定默认单位 (数据类强制使用 MB 以保证宽度充足)
+                // [特殊保留] 网速/硬盘仍需强制 "MB"，防止 GetUnitStr 返回 "KB" 导致宽度不够出现抖动
                 var type = MetricUtils.GetType(item.Key);
                 if (type == MetricType.DataSpeed || type == MetricType.DataSize)
                 {
                     rawUnit = "MB"; 
-                }
-                else
-                {
-                    rawUnit = MetricUtils.GetUnitStr(item.Key, 0, MetricUtils.UnitContext.Taskbar);
                 }
             }
 
