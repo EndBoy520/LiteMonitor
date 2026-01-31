@@ -156,7 +156,12 @@ namespace LiteMonitor
             var currentPower = MetricUtils.GetPowerStatus();
             bool powerChanged = isBat && (_cachedPowerState != currentPower);
 
-            if (Math.Abs(DisplayValue - _cachedDisplayValue) > 0.05f || powerChanged)
+            // [Fix] 降低缓存失效阈值：从 0.05 降低到 0.005
+            // 之前的 0.05 太大，导致当数值从 0.06 变为 0.00 时，虽然 DisplayValue 变了，
+            // 但因为 delta (0.06) 刚刚好大于 0.05 可能触发更新，
+            // 但如果是 0.04 -> 0.00，delta=0.04 < 0.05，导致文本缓存不更新，UI 仍显示 0.04。
+            // 考虑到显示精度通常为 0.00，阈值应至少小于 0.01。
+            if (Math.Abs(DisplayValue - _cachedDisplayValue) > 0.005f || powerChanged)
             {
                 _cachedDisplayValue = DisplayValue;
                 if (isBat) _cachedPowerState = currentPower;
@@ -213,7 +218,15 @@ namespace LiteMonitor
             if (!Value.HasValue) return;
             float target = Value.Value;
             float diff = Math.Abs(target - DisplayValue);
-            if (diff < 0.05f) return;
+            
+            // ★★★ [Fix] 核心修复：微小差异直接吸附，而不是跳过 ★★★
+            if (diff < 0.05f) 
+            {
+                DisplayValue = target;
+                return;
+            }
+
+            // 大幅跳变或高速模式直接更新
             if (diff > 15f || speed >= 0.9) DisplayValue = target;
             else DisplayValue += (float)((target - DisplayValue) * speed);
         }

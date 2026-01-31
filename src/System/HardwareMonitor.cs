@@ -168,6 +168,11 @@ namespace LiteMonitor.src.SystemServices
 
                 lock (_lock)
                 {
+                    // [Optimization] 极简维护
+                    // 仅每10分钟做一次兜底检查 (内部自动 Rebuild)，无需关心返回值。
+                    // 即使重建了，ValueProvider 会在下一次取值时懒加载或直接从 Map 取，也不需要手动 PreCache。
+                    _sensorMap.EnsureFresh(_computer, _cfg);
+
                     // 3秒一次 (慢速扫描)
                     bool isSlowScanTick = (_secondsCounter % 3 == 0); 
                     // 10秒一次 (磁盘后台扫描)

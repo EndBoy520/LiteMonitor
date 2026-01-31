@@ -226,11 +226,7 @@ namespace LiteMonitor.src.SystemServices
                 // ★★★ [新增 3] 优先查缓存，如果本帧算过，直接返回 ★★★
                 if (_tickCache.TryGetValue(key, out float cachedVal)) return cachedVal;
 
-                // ★★★ [优化] 自动感知硬件树变动：如果 SensorMap 重建了，立即重新预热 Provider 缓存 ★★★
-                if (_sensorMap.EnsureFresh(_computer, _cfg))
-                {
-                    PreCacheAllSensors(_sensorMap);
-                }
+
 
                 // 定义临时结果变量
                 float? result = null;

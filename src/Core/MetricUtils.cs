@@ -138,8 +138,8 @@ namespace LiteMonitor.src.Core
             if (type == MetricType.Frequency) return $"{v/1000f:F1}"; // 频率保持 F1，通常 GHz 需要一位小数
             
             // 内存百分比、负载、温度、功耗等
-            // [Refactor] 统一调用自适应格式化逻辑
-            return FormatValueAdaptive(Math.Abs(v), -1);
+
+            return FormatValueAdaptive(v, -1);
         }
 
         /// <summary>
@@ -214,9 +214,13 @@ namespace LiteMonitor.src.Core
             }
 
             // 3. 电池充电后缀
+            // [Fix] 仅在真正充电时显示闪电图标 (AcOnline + IsCharging)
+            // 充满电插着电源时 (AcOnline=true, IsCharging=false) 不应显示闪电
+            var pStatus = GetPowerStatus();
             string suffix = (
                 key.StartsWith("BAT", StringComparison.OrdinalIgnoreCase) 
-                && GetPowerStatus().AcOnline 
+                && pStatus.AcOnline 
+                && pStatus.IsCharging // <--- 新增条件
                 && context != UnitContext.SettingsPanel 
                 && context != UnitContext.SettingsTaskbar) ? "⚡" : "";
 

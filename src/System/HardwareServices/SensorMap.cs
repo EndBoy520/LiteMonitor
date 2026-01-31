@@ -33,28 +33,21 @@ namespace LiteMonitor.src.SystemServices
 
         private DateTime _lastMapBuild = DateTime.MinValue;
         
-        // ★★★ [优化 1] 新增：全系统传感器指纹，用于检测任何层级的传感器变动 ★★★
-        // 相比仅检查硬件数量，指纹能检测到“硬件实例不变但传感器列表重建”的隐蔽情况 (如电池驱动重置)
-        private long _lastSensorFingerprint = 0;
-
+        // ★★★ [优化 1] 移除了全系统传感器指纹相关字段 ★★★
         private readonly object _lock = new object();
         
         // ★★★ [新增] 配置引用 ★★★
         private Settings _cfg;
 
-        public bool EnsureFresh(Computer computer, Settings cfg) // ★ 修改：返回 bool
+        // [Fix] 回归 v1.2.9 的简单逻辑
+        // 只有在初始化时才需要 build，之后除非手动触发或 10 分钟兜底，否则不需要任何检测。
+        // EnsureFresh 的返回值改为 void，因为不需要外部感知是否重建。
+        public void EnsureFresh(Computer computer, Settings cfg) 
         {
-            // ★★★ [优化 2] 核心逻辑修改：基于指纹检测变更 ★★★
-            // 计算当前全系统传感器的指纹 (极低开销: O(N) 遍历求和)
-            long currentFingerprint = CalculateFingerprint(computer);
-
-            if ((DateTime.Now - _lastMapBuild).TotalMinutes > 10 || 
-                currentFingerprint != _lastSensorFingerprint)
+            if ((DateTime.Now - _lastMapBuild).TotalMinutes > 10)
             {
                 Rebuild(computer, cfg);
-                return true;
             }
-            return false;
         }
 
         public void Clear()
@@ -65,45 +58,11 @@ namespace LiteMonitor.src.SystemServices
                 CpuCoreCache.Clear();
                 CachedGpu = null;
                 CpuBusSpeedSensor = null;
-                _lastSensorFingerprint = 0; // 重置指纹
+                // _lastSensorFingerprint = 0; // 已移除
             }
         }
 
-        /// <summary>
-        /// [新增] 计算全系统传感器状态指纹 (递归)
-        /// 算法：XOR Sum of (Hardware.GetHashCode + Sensor.GetHashCode)
-        /// 只要有任何 Sensor 对象被替换（即使 Hardware 不变），GetHashCode 也会变，从而触发重建
-        /// </summary>
-        private long CalculateFingerprint(IComputer computer)
-        {
-            long fingerprint = 0;
-            
-            void Visit(IHardware hw)
-            {
-                // 混入 Hardware 自身的标识 (防止空壳硬件无法区分)
-                fingerprint ^= hw.GetHashCode();
-                // ★ 增强：如果硬件改名了 (如 USB设备重连)，也要视为变动
-                fingerprint ^= hw.Name.GetHashCode();
-                
-                // 混入所有 Sensor 的标识
-                // 注意：必须遍历所有 Sensor，因为问题就出在 Sensor 列表被替换
-                foreach (var s in hw.Sensors)
-                {
-                    fingerprint ^= s.GetHashCode();
-                    // ★ 增强：加入 Name 和 SensorType，防止 GetHashCode 不变 (如 Identifier 复用) 但内容变了
-                    // 用户反馈：电池充电/放电状态切换时，LHM 会替换 Sensor 对象，但 GetHashCode 可能因 Identifier 复用而保持不变
-                    // 此时 Name 会从 "Discharge Rate" 变为 "Charge Rate"，我们必须捕捉这个变化
-                    fingerprint ^= s.Name.GetHashCode();
-                    fingerprint ^= s.SensorType.GetHashCode();
-                }
 
-                // 递归子硬件
-                foreach (var sub in hw.SubHardware) Visit(sub);
-            }
-
-            foreach (var hw in computer.Hardware) Visit(hw);
-            return fingerprint;
-        }
 
         public bool TryGetSensor(string key, out ISensor? sensor)
         {
@@ -297,8 +256,7 @@ namespace LiteMonitor.src.SystemServices
                 CpuBusSpeedSensor = newBusSensor; // ★ 更新 Bus Sensor 缓存
                 
                 _lastMapBuild = DateTime.Now;
-                // ★★★ [优化 3] 记录当前的指纹 ★★★
-                _lastSensorFingerprint = CalculateFingerprint(computer);
+                // ★★★ [优化 3] 指纹记录已移除 ★★★
             }
         }
 
@@ -404,32 +362,9 @@ namespace LiteMonitor.src.SystemServices
                 }
                 if (s.SensorType == SensorType.Power)
                 {
-                    // ★★★ [Definitive Fix] Battery Sensor Selection Strategy ★★★
-                    // LHM may expose both "Charge Rate" and "Discharge Rate" sensors simultaneously,
-                    // or retain the old one as a "Zombie" (stale value) during state transitions.
-                    // We must strictly filter based on current PowerLineStatus to ensure we map the LIVE sensor.
-                    try 
-                    {
-                        // ★★★ [Optimization] 使用统一的 MetricUtils 状态源，移除冗余代码 ★★★
-                        var powerStatus = MetricUtils.GetPowerStatus();
-                        bool isCharging = powerStatus.AcOnline;
-                        
-                        bool hasCharge = Has(name, "Charge");
-                        bool hasDischarge = Has(name, "Discharge");
-
-                        // ★★★ 兼容性修复 ★★★
-                        // 情况A: 组合型传感器 (如 "Charge/Discharge Rate") -> 永远保留，因为它在任何状态下都有效
-                        if (hasCharge && hasDischarge) return "BAT.Power";
-
-                        // 情况B: 独立型传感器 (单向)
-                        // 正在充电时：忽略纯 "Discharge" 传感器 (可能是僵尸对象)
-                        if (isCharging && hasDischarge) return null;
-                        
-                        // 正在放电时：忽略纯 "Charge" 传感器
-                        if (!isCharging && hasCharge) return null;
-                    }
-                    catch { /* 忽略状态检查错误，兜底接受所有 */ }
-
+                    // ★★★ [Simplified] 移除基于充电状态的硬过滤，防止在特殊状态(如充满插电)下找不到传感器导致数据卡死 ★★★
+                    // 无论当前是充电还是放电，只要是 Power 类型的电池传感器，都进行映射。
+                    // 具体的数值正负号和归零逻辑交由 BatteryService 处理。
                     return "BAT.Power";
                 }
                 if (s.SensorType == SensorType.Voltage) return "BAT.Voltage";

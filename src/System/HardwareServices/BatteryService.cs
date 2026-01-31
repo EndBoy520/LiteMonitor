@@ -31,21 +31,23 @@ namespace LiteMonitor.src.SystemServices
                 if (key == "BAT.Power" || key == "BAT.Current")
                 {
                     var powerStatus = MetricUtils.GetPowerStatus();
+                    
+                    // [Fix] 简化且强制的符号修正逻辑
+                    // 无论传感器原始值是正还是负（不同驱动标准不一），
+                    // 我们只根据"是否插电"来强制赋予符号。
+                    
                     if (powerStatus.AcOnline)
                     {
-                        // 如果接通电源但系统报告"未在充电" (Bypass模式)，强制归零
-                        if (!powerStatus.IsCharging)
-                        {
-                            val = 0f;
-                        }
-                        else
-                        {
-                            if (val < 0) val = -val;
-                        }
+                        // 插电状态 (AcOnline=true) -> 视为输入/充电 -> 正数
+                        val = Math.Abs(val);
                     }
                     else
                     {
-                        if (val > 0) val = -val;
+                        // 电池供电状态 (AcOnline=false) -> 视为输出/放电 -> 负数
+                        // ★ 强制取负绝对值，确保一定是负数
+                        val = -Math.Abs(val);
+                        
+
                     }
                 }
                 return val;
