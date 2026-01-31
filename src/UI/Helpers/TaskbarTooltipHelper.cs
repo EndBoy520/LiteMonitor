@@ -239,7 +239,7 @@ namespace LiteMonitor.src.UI.Helpers
             // 或者：如果用户移动了鼠标，我们也不动，直到鼠标移出。
         }
 
-        private int GetTargetWidth(System.Collections.Generic.List<GroupLayoutInfo> groups, Theme theme, float scale)
+        private int GetTargetWidth(List<GroupLayoutInfo> groups, Theme theme, float scale)
         {
             // 如果已有缓存宽度，直接使用 (避免每秒重复测量)
             if (_cachedTargetWidth > 0)
