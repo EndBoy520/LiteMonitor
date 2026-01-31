@@ -15,6 +15,7 @@ namespace LiteMonitor.src.UI
         private LiteTreeView _tree;
         private System.Windows.Forms.Timer _refreshTimer;
         private Panel _headerPanel;
+         private TextBox _searchInput;
         
         private Settings _settings = Settings.Load();
         
@@ -30,14 +31,14 @@ namespace LiteMonitor.src.UI
 
             // 搜索栏
             var pnlToolbar = new Panel { Dock = DockStyle.Top, Height = UIUtils.S(40), Padding = new Padding(10), BackColor = Color.WhiteSmoke };
-            var searchInput = new TextBox { 
+            _searchInput = new TextBox { 
                 Dock = DockStyle.Fill, 
                 BorderStyle = BorderStyle.FixedSingle,
                 Font = new Font("Microsoft YaHei UI", 9f), 
                 PlaceholderText = T("Search sensor name...", "搜索传感器名称...") 
             };
-            searchInput.TextChanged += (s, e) => RebuildTree(searchInput.Text.Trim());
-            pnlToolbar.Controls.Add(searchInput);
+            _searchInput.TextChanged += (s, e) => RebuildTree(_searchInput.Text.Trim());
+            pnlToolbar.Controls.Add(_searchInput);
 
             // 表头
             _headerPanel = new Panel { Dock = DockStyle.Top, Height = UIUtils.S(24), BackColor = Color.FromArgb(250, 250, 250) };

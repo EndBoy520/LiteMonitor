@@ -312,6 +312,7 @@ namespace LiteMonitor
                     await Task.Delay(3000);
                     // 1. 立即执行第一次置顶
                     this.TopMost = false;
+                    await Task.Delay(1000);
                     this.TopMost = true;
                     this.BringToFront();
                 }));

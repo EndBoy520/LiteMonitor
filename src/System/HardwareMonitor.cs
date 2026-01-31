@@ -387,9 +387,15 @@ namespace LiteMonitor.src.SystemServices
                     // 2. 清理字符串池
                     UIUtils.ClearStringPool();
 
-                    // 3. 关闭硬件服务
-                    _computer.Accept(new HardwareVisitor(h => { }));
-                    _computer.Close();
+                    // 3. 关闭旧硬件服务
+                    if (_computer != null)
+                    {
+                        _computer.Accept(new HardwareVisitor(h => { }));
+                        _computer.Close();
+                        // ★★★ 核心修复：手动清空硬件列表 ★★★
+                        // LHM 的 Close() 不会清空列表，必须手动 Clear，否则再次 Open 会追加重复硬件
+                        _computer.Hardware.Clear();
+                    }
                     
                     _computer.Open();
 
