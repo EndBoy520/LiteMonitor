@@ -180,6 +180,56 @@ namespace LiteMonitor.src.UI.Helpers
                 }
                 catch { /* Ignore DWM errors */ }
 
+                // =========================================================================
+                // [NEW FIX] 针对二合一设备/Windows 11 平板模式的强力修正
+                // 原因：在二合一设备上，WindowRect 和 DWM 都可能包含不可见的手势触控区域（幽灵高度）。
+                // 方案：Screen.WorkingArea 是由 Explorer 维护的实际可用区域，以此为基准修正 Top。
+                // =========================================================================
+                try
+                {
+                    Screen screen = null;
+                    if (!string.IsNullOrEmpty(targetDevice))
+                        screen = Screen.AllScreens.FirstOrDefault(s => s.DeviceName == targetDevice);
+                    
+                    // 如果没找到或未指定，使用句柄所在的屏幕
+                    if (screen == null)
+                        screen = Screen.FromHandle(hTaskbar);
+
+                    if (screen != null)
+                    {
+                        // 1. 获取屏幕工作区 (不包含任务栏的区域)
+                        Rectangle workArea = screen.WorkingArea;
+                        Rectangle screenBounds = screen.Bounds;
+
+                        // 2. 仅当任务栏位于底部时执行此修正 (Win11 绝大多数情况)
+                        bool isBottomDocked = _cachedDwmRect.Top >= (screenBounds.Top + screenBounds.Height / 2);
+
+                        if (isBottomDocked)
+                        {
+                            // 3. 核心判断：如果任务栏声称的顶部 (Top) 明显高于 工作区底部 (Bottom)
+                            // 说明任务栏汇报了一个包含了"不可见区域"的高度
+                            // 容差 2px 防止 DPI 缩放导致的舍入误差
+                            if (_cachedDwmRect.Top < workArea.Bottom - 2)
+                            {
+                                int visualHeight = screenBounds.Bottom - workArea.Bottom;
+                                
+                                // 确保计算出的高度是合理的 (例如 >= 0 且不占满全屏)
+                                // 如果 visualHeight 为 0，通常意味着任务栏自动隐藏了，此时无需修正或保持原样即可
+                                if (visualHeight >= 0 && visualHeight < screenBounds.Height / 2)
+                                {
+                                    // 强制修正 Top 和 Height
+                                    _cachedDwmRect = new Rectangle(
+                                        _cachedDwmRect.Left, 
+                                        workArea.Bottom, 
+                                        _cachedDwmRect.Width, 
+                                        visualHeight);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { /* 兜底：如果修正逻辑出错，保持原 DWM 或 RectW 结果 */ }
+
                 return _cachedDwmRect;
             }
 
