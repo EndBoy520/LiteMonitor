@@ -123,6 +123,14 @@ namespace LiteMonitor.src.UI.Helpers
             // ★★★ 垂直任务栏定位 ★★★
             if (IsVertical())
             {
+                // Win10 原生挤占模式检查 (A/B 方案之 B) - 垂直模式
+                if (_winHelper.IsWin10Mode)
+                {
+                    // 注意：垂直模式下，Width 是固定的（任务栏宽度），Height 是 Monitor 高度
+                    _winHelper.SetPosition(_hTaskbar, 0, 0, _taskbarRect.Width, _form.Height, _cfg.TaskbarAlignLeft);
+                    return;
+                }
+
                 // 尝试定位到托盘上方
                 int bottomLimit = _taskbarRect.Bottom;
                 
@@ -168,6 +176,16 @@ namespace LiteMonitor.src.UI.Helpers
             }
             else
             {
+                // Win10 原生挤占模式检查 (A/B 方案之 B)
+                // 如果启用了 Win10 模式，我们就不需要计算 Right 偏移了，
+                // 因为位置是由 Win10Helper 在 SetPosition 内部通过 TryAdjustLayout 决定的。
+                // 这里我们只需要确保调用 SetPosition 即可，坐标传 0 也没关系。
+                if (_winHelper.IsWin10Mode)
+                {
+                    _winHelper.SetPosition(_hTaskbar, 0, 0, panelWidth, _taskbarHeight, _cfg.TaskbarAlignLeft);
+                    return;
+                }
+
                 if (isPrimary && _hTray != IntPtr.Zero && _winHelper.GetWindowRectWrapper(_hTray, out Rectangle tray))
                 {
                     leftScreen = tray.Left - panelWidth - 6;

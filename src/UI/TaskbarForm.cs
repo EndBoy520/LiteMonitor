@@ -100,6 +100,7 @@ namespace LiteMonitor
         {
             if (disposing)
             {
+                _winHelper?.RestoreTaskbar();
                 _timer.Stop();
                 _timer.Dispose();
                 _currentMenu?.Dispose();

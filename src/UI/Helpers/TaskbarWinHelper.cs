@@ -22,8 +22,14 @@ namespace LiteMonitor.src.UI.Helpers
         private Rectangle _cachedResult = Rectangle.Empty;
         private bool _isCacheValid = false;
 
+        // Win10 布局助手 (A/B 方案支持)
+        private TaskbarWin10LayoutHelper? _win10Helper;
+
         // [Optimization] 静态缓存系统版本检测结果，供全局复用，避免重复调用系统 API
         private static readonly bool _isWin11 = Environment.OSVersion.Version.Major == 10 && Environment.OSVersion.Version.Build >= 22000;
+
+        public bool IsWin10Mode => !_isWin11 && _win10Helper != null && _win10Helper.IsReady;
+        public TaskbarWin10LayoutHelper Win10Helper => _win10Helper;
 
         public TaskbarWinHelper(Form form)
         {
@@ -71,7 +77,22 @@ namespace LiteMonitor.src.UI.Helpers
         // =================================================================
         public void AttachToTaskbar(IntPtr taskbarHandle)
         {
-            SetParent(_form.Handle, taskbarHandle);
+            IntPtr targetParent = taskbarHandle;
+
+            // Win10 兼容模式：初始化布局助手
+            if (!_isWin11)
+            {
+                _win10Helper ??= new TaskbarWin10LayoutHelper();
+                _win10Helper.Initialize(taskbarHandle);
+
+                // Win10下，为了与系统图标平级且正确遮挡，我们将父窗口设为 ReBarWindow32
+                if (_win10Helper.IsReady && _win10Helper.ReBarHandle != IntPtr.Zero)
+                {
+                    targetParent = _win10Helper.ReBarHandle;
+                }
+            }
+
+            SetParent(_form.Handle, targetParent);
 
             int style = GetWindowLong(_form.Handle, GWL_STYLE);
             style &= (int)~0x80000000; 
@@ -79,16 +100,33 @@ namespace LiteMonitor.src.UI.Helpers
             SetWindowLong(_form.Handle, GWL_STYLE, style);
         }
 
-        public void SetPosition(IntPtr taskbarHandle, int left, int top, int w, int h)
+        public void SetPosition(IntPtr taskbarHandle, int left, int top, int w, int h, bool alignLeft = true)
         {
             IntPtr currentParent = GetParent(_form.Handle);
-            bool isAttached = (currentParent == taskbarHandle);
+            // Win10下，父窗口可能是 ReBarWindow32
+            IntPtr expectedParent = taskbarHandle;
+            if (!_isWin11 && _win10Helper != null && _win10Helper.IsReady)
+                expectedParent = _win10Helper.ReBarHandle;
+
+            bool isAttached = (currentParent == expectedParent);
 
             if (!isAttached)
             {
                 AttachToTaskbar(taskbarHandle);
                 currentParent = GetParent(_form.Handle);
-                isAttached = currentParent == taskbarHandle;
+                isAttached = currentParent == expectedParent;
+            }
+
+            // =================================================================
+            // Win10 原生任务栏挤占逻辑 (A/B 方案之 B)
+            // =================================================================
+            if (!_isWin11 && _win10Helper != null && _win10Helper.IsReady)
+            {
+                if (_win10Helper.TryAdjustLayout(taskbarHandle, w, h, alignLeft, out int win10X, out int win10Y))
+                {
+                    SetWindowPos(_form.Handle, IntPtr.Zero, win10X, win10Y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+                    return;
+                }
             }
 
             int finalX = left;
@@ -107,6 +145,11 @@ namespace LiteMonitor.src.UI.Helpers
                 IntPtr HWND_TOPMOST = (IntPtr)(-1);
                 SetWindowPos(_form.Handle, HWND_TOPMOST, finalX, finalY, w, h, SWP_NOACTIVATE);
             }
+        }
+
+        public void RestoreTaskbar()
+        {
+            _win10Helper?.Restore();
         }
 
         // =================================================================
