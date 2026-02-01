@@ -411,9 +411,15 @@ namespace LiteMonitor.src.WebServer
                 if (i.primary && i.sts > groups[gid].maxSts) groups[gid].maxSts = i.sts;
 
                 const isBigMode = ['NET', 'DISK', 'DATA'].includes(gid);
-                const isLoad = i.k.includes('Load') || (i.u.includes('%') && !i.k.includes('Fan'));
+                // [Fix] 判定核心指标 (Core/Ring) 的逻辑
+                // 之前只通过 'Load' 关键字判断，但首次渲染时可能因为数据不全或其他原因导致误判
+                // 这里增强判断逻辑：如果是 CPU/GPU/MEM 组，且是负载/使用率相关的项，则视为核心项
+                const isLoad = (i.k.includes('Load') || (i.u.includes('%') && !i.k.includes('Fan'))) && !i.k.includes('Fan');
                 
-                if (!isBigMode && isLoad && !groups[gid].core) {
+                // 确保只有特定的组才会有圆环 (Standard Layout)
+                const isStdLayout = !isBigMode && gid !== 'DASH';
+
+                if (isStdLayout && isLoad && !groups[gid].core) {
                     groups[gid].core = i;
                 } else {
                     groups[gid].subs.push(i);
@@ -442,23 +448,23 @@ namespace LiteMonitor.src.WebServer
                     } else if (isBig) {
                         content = `<div class='layout-big' id='big-${gid}'></div>`;
                     } else {
-                        let ringHtml = '';
-                        if (grp.core) {
-                            ringHtml = `
+                        // [Fix] 无论当前是否有核心数据，Standard 布局都强制渲染圆环容器
+                        // 这样即使数据晚到，DOM 结构也是完整的，后续 update 时能找到元素
+                        const ringHtml = `
                             <div class='ring-container'>
-                                <div class='ring-wrap' id='rw-${gid}'>
+                                <div class='ring-wrap' id='rw-${gid}' style='opacity:${grp.core ? 1 : 0}'>
                                     <svg class='ring-svg' viewBox='0 0 36 36'>
                                         <path class='ring-bg' d='M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831' />
                                         <path class='ring-val' id='rp-${gid}' stroke-dasharray='0, 100' d='M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831' />
                                     </svg>
                                     <div class='ring-data'>
-                                        <div class='rd-val' id='rv-${gid}'>0</div>
+                                        <div class='rd-val' id='rv-${gid}'>--</div>
                                         <div class='rd-unit' id='ru-${gid}'>%</div>
                                     </div>
                                 </div>
-                                <div class='rd-name' id='rn-${gid}'>--</div>
+                                <div class='rd-name' id='rn-${gid}'>${grp.core ? grp.core.n : '--'}</div>
                             </div>`;
-                        }
+                        
                         content = `<div class='layout-std'>${ringHtml}<div class='detail-list' id='list-${gid}'></div></div>`;
                     }
 
@@ -472,13 +478,14 @@ namespace LiteMonitor.src.WebServer
                         el: div, isBig, isDash,
                         cont: isDash ? div.querySelector(`#dash-${gid}`) : (isBig ? div.querySelector(`#big-${gid}`) : div.querySelector(`#list-${gid}`)),
                         rows: {},
-                        core: grp.core ? { 
+                        // [Fix] 始终绑定 DOM 引用，防止后续数据到达时找不到元素
+                        core: isDash || isBig ? null : { 
                             wrap: div.querySelector(`#rw-${gid}`),
                             p: div.querySelector(`#rp-${gid}`), 
                             v: div.querySelector(`#rv-${gid}`), 
                             u: div.querySelector(`#ru-${gid}`),
                             n: div.querySelector(`#rn-${gid}`)
-                        } : null
+                        }
                     };
                 }
 
@@ -543,7 +550,10 @@ namespace LiteMonitor.src.WebServer
                         if (r.u.innerText !== item.u) r.u.innerText = item.u;
                     });
                 } else {
+                    // [Fix] 渲染或更新 Core Ring 数据
+                    // 如果之前 core 是隐藏的（因为首次加载时没数据），现在有数据了就显示出来
                     if (grp.core && cObj.core) {
+                        cObj.core.wrap.style.opacity = '1'; // 确保显示
                         cObj.core.wrap.className = `ring-wrap is-${grp.core.sts}`;
                         cObj.core.v.innerText = grp.core.v;
                         cObj.core.u.innerText = grp.core.u;
